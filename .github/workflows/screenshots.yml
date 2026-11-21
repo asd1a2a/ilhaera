@@ -1,0 +1,47 @@
+name: screenshots
+
+# Mac 앱을 실제로 띄워 화면을 찍는다 (PR 과 수동 실행).
+on:
+  pull_request:
+    paths: ["mac/**", ".github/workflows/screenshots.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: 일해라.app 빌드
+        working-directory: mac
+        run: ./build-app.sh
+      - name: 실행하고 찍기
+        run: |
+          mkdir -p shots
+          for theme in light dark; do
+            python3 mac/ci/seed.py "$theme"
+            open "mac/build/일해라.app"
+            sleep 10
+            screencapture -x "shots/$theme.png"
+            pkill -x Ilhaera || true
+            sleep 2
+          done
+          defaults read com.asd1a2a.ilhaera || true
+          ls -la shots
+      # 결과를 ci-output 브랜치에 올린다 (artifact 를 받을 수 없는 환경에서도 git 으로 가져갈 수 있게)
+      - name: ci-output 브랜치에 올리기
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p out
+          cp shots/*.png out/
+          cp mac/build/Ilhaera-mac.zip out/
+          cd out
+          git init -q -b ci-output
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "CI output for ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ci-output

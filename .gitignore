@@ -1,0 +1,9 @@
+# .NET
+windows/src/bin/
+windows/src/obj/
+windows/tests/bin/
+windows/tests/obj/
+# Swift
+mac/.build/
+mac/build/
+.DS_Store

@@ -34,12 +34,12 @@ enum AlertPanels {
                              onOK: close,
                              onSnooze: { onSnooze(ids); close() },
                              onOpen: { onOpen(); close() })
+        // 창에 붙이기 전에 재면 제목 표시줄 여백이 빠진 내용 크기만 나온다
+        // (내용은 투명한 제목 표시줄 영역까지 올려 그린다)
+        let size = NSHostingView(rootView: view).fittingSize
         let host = NSHostingView(rootView: view)
         panel.contentView = host
-        // 내용은 투명한 제목 표시줄 영역까지 올려 그리므로, 그 높이만큼 창을 줄인다
-        let titlebarHeight = panel.frame.height - panel.contentLayoutRect.height
-        let fitting = host.fittingSize
-        panel.setContentSize(NSSize(width: fitting.width, height: max(100, fitting.height - titlebarHeight)))
+        panel.setContentSize(NSSize(width: size.width, height: max(100, size.height)))
 
         // 오른쪽 아래, 이미 떠 있는 알림 위로 쌓기
         if let screen = NSScreen.main {

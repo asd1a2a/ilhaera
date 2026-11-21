@@ -1,7 +1,9 @@
 name: screenshots
 
-# Mac 앱을 실제로 띄워 화면을 찍는다 (수동 실행).
+# Mac 앱을 실제로 띄워 화면을 찍는다 (PR 과 수동 실행).
 on:
+  pull_request:
+    paths: ["mac/**", ".github/workflows/screenshots.yml"]
   workflow_dispatch:
 
 jobs:

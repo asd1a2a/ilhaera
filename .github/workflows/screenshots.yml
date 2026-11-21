@@ -1,0 +1,31 @@
+name: screenshots
+
+# Mac 앱을 실제로 띄워 화면을 찍는다 (수동 실행).
+on:
+  workflow_dispatch:
+
+jobs:
+  shots:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: 일해라.app 빌드
+        working-directory: mac
+        run: ./build-app.sh
+      - name: 실행하고 찍기
+        run: |
+          mkdir -p shots
+          for theme in light dark; do
+            python3 mac/ci/seed.py "$theme"
+            open "mac/build/일해라.app"
+            sleep 10
+            screencapture -x "shots/$theme.png"
+            pkill -x Ilhaera || true
+            sleep 2
+          done
+          defaults read com.asd1a2a.ilhaera || true
+          ls -la shots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: shots/

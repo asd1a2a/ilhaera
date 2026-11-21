@@ -36,7 +36,10 @@ enum AlertPanels {
                              onOpen: { onOpen(); close() })
         let host = NSHostingView(rootView: view)
         panel.contentView = host
-        panel.setContentSize(host.fittingSize)
+        // 내용은 투명한 제목 표시줄 영역까지 올려 그리므로, 그 높이만큼 창을 줄인다
+        let titlebarHeight = panel.frame.height - panel.contentLayoutRect.height
+        let fitting = host.fittingSize
+        panel.setContentSize(NSSize(width: fitting.width, height: max(100, fitting.height - titlebarHeight)))
 
         // 오른쪽 아래, 이미 떠 있는 알림 위로 쌓기
         if let screen = NSScreen.main {

@@ -1,4 +1,5 @@
-"""CI 스크린샷용 예시 데이터. 사용: python3 seed.py light|dark|glass|done"""
+"""CI 스크린샷용 예시 데이터 (Mac·Windows 공용).
+사용: python3 seed.py light|dark|glass|done [설정=값 ...]   예: seed.py glass glassTint=60"""
 import json, os, sys, datetime as dt
 
 theme = sys.argv[1] if len(sys.argv) > 1 else "light"
@@ -30,7 +31,15 @@ if theme == "glass":
     # 색 바꾸기도 함께 확인: 보라 강조 + 하늘색 형광펜, 꽤 투명한 유리
     settings.update(accentColor="#7B4FD6", markerColor="#A9DDFF", glassTint=20)
 
-folder = os.path.expanduser("~/Library/Application Support/Ilhaera")
+# 뒤에 붙인 "이름=값" 은 설정을 덮어쓴다
+for pair in sys.argv[2:]:
+    key, _, value = pair.partition("=")
+    settings[key] = (value == "true") if value in ("true", "false") else int(value) if value.lstrip("-").isdigit() else value
+
+if sys.platform == "win32":
+    folder = os.path.join(os.environ["APPDATA"], "TodoWidget")
+else:
+    folder = os.path.expanduser("~/Library/Application Support/Ilhaera")
 os.makedirs(folder, exist_ok=True)
 with open(os.path.join(folder, "todos.json"), "w", encoding="utf-8") as fp:
     json.dump({"version": 1, "items": items,

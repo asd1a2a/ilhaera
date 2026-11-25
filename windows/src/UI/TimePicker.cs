@@ -189,6 +189,7 @@ namespace TodoWidget.UI
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
+            Theme.Prepare(g);
             g.Clear(BackColor);
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
@@ -199,7 +200,7 @@ namespace TodoWidget.UI
             Theme.FillRound(g, Theme.Surface, pill, pill.Height / 2f);
             var sel = hour < 12 ? amRect : pmRect;
             var selInner = Rectangle.Inflate(sel, -Px(3), -Px(3));
-            Theme.FillRound(g, Theme.Back, selInner, selInner.Height / 2f);
+            Theme.FillRound(g, Theme.Raised, selInner, selInner.Height / 2f);
             if (Focused && focusSeg == Seg.AmPm) Theme.DrawRound(g, Theme.Accent, selInner, selInner.Height / 2f, Math.Max(1.5f, Theme.Scale * 1.5f));
             DrawCentered(g, "오전", ampmFont, amRect, hour < 12 ? Theme.Text : (Equals(hover, amRect) ? Theme.Text : Theme.Faint));
             DrawCentered(g, "오후", ampmFont, pmRect, hour >= 12 ? Theme.Text : (Equals(hover, pmRect) ? Theme.Text : Theme.Faint));
@@ -406,6 +407,7 @@ namespace TodoWidget.UI
         protected override void OnMouseLeave(EventArgs e)
         {
             base.OnMouseLeave(e);
+            if (WidgetForm.StillOver(this)) return;
             if (hover != null) { hover = null; Invalidate(); }
         }
 

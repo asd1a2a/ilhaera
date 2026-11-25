@@ -175,6 +175,7 @@ namespace TodoWidget.UI
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
+            Theme.Prepare(g);
             g.Clear(BackColor);
             var now = Clock();
 
@@ -425,7 +426,7 @@ namespace TodoWidget.UI
         protected override void OnMouseLeave(EventArgs e)
         {
             base.OnMouseLeave(e);
-            if (draggingThumb) return;
+            if (draggingThumb || WidgetForm.StillOver(this)) return;
             hoverIndex = -1;
             hoverCheck = hoverDelete = hoverThumb = hoverClear = false;
             Invalidate();
@@ -493,6 +494,15 @@ namespace TodoWidget.UI
             if (value == scroll) return;
             scroll = value;
             Invalidate();
+        }
+
+        /// <summary>자동 확인용: 첫 할 일의 체크 동그라미 가운데 (화면 좌표).</summary>
+        public Point? FirstCheckOnScreen()
+        {
+            var row = rows.FirstOrDefault(r => r.Kind == RowKind.Item);
+            if (row == null) return null;
+            var c = Offset(row.Check);
+            return PointToScreen(new Point(c.X + c.Width / 2, c.Y + c.Height / 2));
         }
 
         public void ScrollToItem(TodoItem item)

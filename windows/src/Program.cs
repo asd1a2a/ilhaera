@@ -38,6 +38,7 @@ namespace TodoWidget
                     AppDomain.CurrentDomain.UnhandledException += (s, e) => Log(e.ExceptionObject as Exception);
 
                     Theme.Init();
+                    Theme.GlassKeySymmetric = Environment.GetEnvironmentVariable("ILHAERA_GLASS_KEY") == "symmetric";
                     Storage storage;
                     AppData data;
                     try

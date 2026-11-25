@@ -30,14 +30,34 @@ namespace TodoWidget.UI
             Font = Theme.Font(9f);
         }
 
-        protected override void OnMouseEnter(EventArgs e) { hover = true; Invalidate(); base.OnMouseEnter(e); }
-        protected override void OnMouseLeave(EventArgs e) { hover = pressed = false; Invalidate(); base.OnMouseLeave(e); }
+        protected override void OnMouseEnter(EventArgs e) { if (!hover) { hover = true; Invalidate(); } base.OnMouseEnter(e); }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            if (WidgetForm.StillOver(this)) return;
+            hover = pressed = false;
+            Invalidate();
+            base.OnMouseLeave(e);
+        }
+
         protected override void OnMouseDown(MouseEventArgs e) { if (e.Button == MouseButtons.Left) { pressed = true; Invalidate(); } base.OnMouseDown(e); }
-        protected override void OnMouseUp(MouseEventArgs e) { pressed = false; Invalidate(); base.OnMouseUp(e); }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            bool wasPressed = pressed;
+            pressed = false;
+            Invalidate();
+            base.OnMouseUp(e);
+            // 유리 테마의 뚫린 곳에서 뗀 클릭은 Windows 가 이 버튼의 클릭으로 쳐 주지 않으므로 직접 알린다.
+            if (wasPressed && e.Button == MouseButtons.Left && ClientRectangle.Contains(e.Location) &&
+                WidgetForm.OnGlass(this, PointToScreen(e.Location)))
+                OnClick(EventArgs.Empty);
+        }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
+            Theme.Prepare(g);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.Clear(Parent != null ? Parent.BackColor : BackColor);
             var r = new RectangleF(0, 0, Width - 1, Height - 1);

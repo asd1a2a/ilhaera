@@ -8,7 +8,7 @@ enum AlertPanels {
     static let snoozeMinutes = 10
     private static var open: [NSPanel] = []
 
-    static func show(_ alerts: [ReminderAlert], onSnooze: @escaping ([String]) -> Void, onOpen: @escaping () -> Void) {
+    static func show(_ alerts: [ReminderAlert], store: Store, onSnooze: @escaping ([String]) -> Void, onOpen: @escaping () -> Void) {
         let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 160),
                             styleMask: [.titled, .fullSizeContentView, .nonactivatingPanel],
                             backing: .buffered, defer: false)
@@ -22,7 +22,9 @@ enum AlertPanels {
         panel.hidesOnDeactivate = false
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.backgroundColor = Palette.nsBack
+        let glass = store.settings.theme == "glass"
+        panel.isOpaque = !glass
+        panel.backgroundColor = glass ? .clear : Palette.nsBack
 
         let close: () -> Void = { [weak panel] in
             guard let panel else { return }
@@ -30,10 +32,13 @@ enum AlertPanels {
             open.removeAll { $0 === panel }
         }
         let ids = alerts.map { $0.item.id }
-        let view = AlertView(alerts: alerts, now: Date(),
-                             onOK: close,
-                             onSnooze: { onSnooze(ids); close() },
-                             onOpen: { onOpen(); close() })
+        let view = Themed {
+            AlertView(alerts: alerts, now: Date(),
+                      onOK: close,
+                      onSnooze: { onSnooze(ids); close() },
+                      onOpen: { onOpen(); close() })
+        }
+        .environmentObject(store)
         // 창에 붙이기 전에 재면 제목 표시줄 여백이 빠진 내용 크기만 나온다
         // (내용은 투명한 제목 표시줄 영역까지 올려 그린다)
         let size = NSHostingView(rootView: view).fittingSize
@@ -61,6 +66,7 @@ enum AlertPanels {
 }
 
 struct AlertView: View {
+    @Environment(\.look) var look
     let alerts: [ReminderAlert]
     let now: Date
     let onOK: () -> Void
@@ -76,8 +82,8 @@ struct AlertView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
-                Image(systemName: "clock").font(.system(size: 13, weight: .semibold)).foregroundColor(Palette.accent)
-                Text(title).font(Fonts.ui(14, .bold)).foregroundColor(Palette.text)
+                Image(systemName: "clock").font(.system(size: 13, weight: .semibold)).foregroundColor(look.accent)
+                Text(title).font(Fonts.ui(14, .bold)).foregroundColor(look.text)
             }
             ForEach(alerts.prefix(4)) { alert in
                 AlertRow(alert: alert, now: now)
@@ -85,21 +91,21 @@ struct AlertView: View {
                     .onTapGesture(perform: onOpen)
             }
             if alerts.count > 4 {
-                Text("외 \(alerts.count - 4)개 더 있어요").font(Fonts.ui(11.5)).foregroundColor(Palette.sub)
+                Text("외 \(alerts.count - 4)개 더 있어요").font(Fonts.ui(11.5)).foregroundColor(look.sub)
             }
             HStack(spacing: 8) {
                 Spacer()
                 Button("\(AlertPanels.snoozeMinutes)분 뒤 다시 알림", action: onSnooze)
                     .buttonStyle(.plain)
                     .font(Fonts.ui(12))
-                    .foregroundColor(Palette.sub)
+                    .foregroundColor(look.sub)
                     .padding(.horizontal, 10)
                 Button(action: onOK) {
                     Text("확인")
                         .font(Fonts.ui(12.5, .bold))
-                        .foregroundColor(Palette.onAccent)
+                        .foregroundColor(look.onAccent)
                         .frame(width: 64, height: 28)
-                        .background(RoundedRectangle(cornerRadius: 7).fill(Palette.accent))
+                        .background(RoundedRectangle(cornerRadius: 7).fill(look.accent))
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut(.defaultAction)
@@ -107,12 +113,13 @@ struct AlertView: View {
         }
         .padding(EdgeInsets(top: 16, leading: 18, bottom: 14, trailing: 16))
         .frame(width: 340, alignment: .leading)
-        .background(Palette.back.ignoresSafeArea())
+        .background(WindowBackground())
         .ignoresSafeArea(.container, edges: .top)
     }
 }
 
 struct AlertRow: View {
+    @Environment(\.look) var look
     let alert: ReminderAlert
     let now: Date
 
@@ -122,14 +129,14 @@ struct AlertRow: View {
         HStack(alignment: .top, spacing: 10) {
             Text(TimeText.hourMinute(due))
                 .font(Fonts.num(21, .bold))
-                .foregroundColor(upcoming ? Palette.markerText : Palette.danger)
+                .foregroundColor(upcoming ? look.markerText : look.danger)
                 .padding(.horizontal, 4)
-                .background(RoundedRectangle(cornerRadius: 4).fill(upcoming ? Palette.marker : Color.clear))
+                .background(RoundedRectangle(cornerRadius: 4).fill(upcoming ? look.marker : Color.clear))
             VStack(alignment: .leading, spacing: 2) {
-                Text(alert.item.text.oneLine).font(Fonts.ui(13, .bold)).foregroundColor(Palette.text).lineLimit(2)
+                Text(alert.item.text.oneLine).font(Fonts.ui(13, .bold)).foregroundColor(look.text).lineLimit(2)
                 Text(upcoming ? "\(alert.minutesLeft)분 후 시작" : missedText(due))
                     .font(Fonts.ui(11.5))
-                    .foregroundColor(upcoming ? Palette.warn : Palette.danger)
+                    .foregroundColor(upcoming ? look.warn : look.danger)
             }
         }
     }

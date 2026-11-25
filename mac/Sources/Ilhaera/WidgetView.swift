@@ -3,6 +3,7 @@ import IlhaeraCore
 
 /// 위젯 본체: 일력 헤더 → 입력칸 → (해석 미리보기 / 시간 선택기) → 날짜별 목록 → 되돌리기.
 struct WidgetView: View {
+    @Environment(\.look) var look
     @EnvironmentObject var store: Store
     let onMenu: () -> Void
     let onHide: () -> Void
@@ -37,15 +38,18 @@ struct WidgetView: View {
         }
         .padding(EdgeInsets(top: 6, leading: 14, bottom: 12, trailing: 10))
         .frame(minWidth: 300, maxWidth: .infinity, minHeight: 340, maxHeight: .infinity, alignment: .top)
-        .background(Palette.back.ignoresSafeArea())
+        .background(WindowBackground())
         .ignoresSafeArea(.container, edges: .top)
         .sheet(item: $editing) { item in
-            EditView(item: item, lead: store.settings.reminderMinutes,
-                     onSave: { newText, due, rule in
-                         store.update(item.id, text: newText, due: due, repeat: rule)
-                         editing = nil
-                     },
-                     onCancel: { editing = nil })
+            Themed {
+                EditView(item: item, lead: store.settings.reminderMinutes,
+                         onSave: { newText, due, rule in
+                             store.update(item.id, text: newText, due: due, repeat: rule)
+                             editing = nil
+                         },
+                         onCancel: { editing = nil })
+            }
+            .environmentObject(store)
         }
         .onChange(of: text) { newValue in
             if newValue.trimmed.isEmpty { parseDismissed = false }
@@ -65,8 +69,8 @@ struct WidgetView: View {
                 Image(systemName: "plus")
                     .font(.system(size: 13, weight: .bold))
                     .frame(width: 26, height: 26)
-                    .background(RoundedRectangle(cornerRadius: 7).fill(Palette.accent))
-                    .foregroundColor(Palette.onAccent)
+                    .background(RoundedRectangle(cornerRadius: 7).fill(look.accent))
+                    .foregroundColor(look.onAccent)
             }
             .buttonStyle(.plain)
             .help("추가 (Return)")
@@ -74,7 +78,7 @@ struct WidgetView: View {
         .padding(.leading, 12)
         .padding(.trailing, 6)
         .padding(.vertical, 6)
-        .background(RoundedRectangle(cornerRadius: 9).fill(Palette.surface))
+        .surface(radius: 9)
     }
 
     private func togglePicker() {
@@ -118,6 +122,7 @@ struct WidgetView: View {
 // ── 헤더: 일력 + 진행률 + 다음 일정 ──
 
 struct HeaderView: View {
+    @Environment(\.look) var look
     @EnvironmentObject var store: Store
     let onMenu: () -> Void
     let onHide: () -> Void
@@ -128,10 +133,10 @@ struct HeaderView: View {
             HStack(alignment: .center, spacing: 9) {
                 Text("\(TimeMath.day(now))")
                     .font(Fonts.num(40, .bold))
-                    .foregroundColor(Palette.weekday(now))
+                    .foregroundColor(look.weekday(now))
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("\(TimeMath.month(now))월").font(Fonts.ui(11.5)).foregroundColor(Palette.sub)
-                    Text(TimeText.dayName(now) + "요일").font(Fonts.ui(13.5, .bold)).foregroundColor(Palette.weekday(now))
+                    Text("\(TimeMath.month(now))월").font(Fonts.ui(11.5)).foregroundColor(look.sub)
+                    Text(TimeText.dayName(now) + "요일").font(Fonts.ui(13.5, .bold)).foregroundColor(look.weekday(now))
                 }
                 Spacer()
                 IconButton(systemName: "ellipsis", help: "메뉴", action: onMenu)
@@ -148,6 +153,7 @@ struct HeaderView: View {
 }
 
 struct ProgressRow: View {
+    @Environment(\.look) var look
     let items: [TodoItem]
     let now: Date
 
@@ -167,17 +173,17 @@ struct ProgressRow: View {
         let open = items.filter { !$0.done }.count
         HStack(spacing: 10) {
             if !todays.isEmpty {
-                Text("오늘 \(doneCount)/\(todays.count)").font(Fonts.ui(11.5)).foregroundColor(Palette.sub)
+                Text("오늘 \(doneCount)/\(todays.count)").font(Fonts.ui(11.5)).foregroundColor(look.sub)
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Palette.surface)
-                        Capsule().fill(Palette.accent)
+                        Capsule().fill(look.surface)
+                        Capsule().fill(look.accent)
                             .frame(width: max(doneCount > 0 ? 4 : 0, geo.size.width * CGFloat(doneCount) / CGFloat(todays.count)))
                     }
                 }
                 .frame(height: 4)
             } else if !items.isEmpty {
-                Text(open > 0 ? "남은 일 \(open)개" : "모두 끝냈어요").font(Fonts.ui(11.5)).foregroundColor(Palette.sub)
+                Text(open > 0 ? "남은 일 \(open)개" : "모두 끝냈어요").font(Fonts.ui(11.5)).foregroundColor(look.sub)
             }
         }
         .frame(height: 16)
@@ -185,6 +191,7 @@ struct ProgressRow: View {
 }
 
 struct NextStrip: View {
+    @Environment(\.look) var look
     let item: TodoItem
     let due: Date
     let now: Date
@@ -204,13 +211,14 @@ struct NextStrip: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 38)
-        .foregroundColor(soon ? Palette.markerText : Palette.text)
-        .background(RoundedRectangle(cornerRadius: 9).fill(soon ? Palette.marker : Palette.surface))
+        .foregroundColor(soon ? look.markerText : look.text)
+        .surface(radius: 9, fill: soon ? look.marker : nil)
         .contentShape(Rectangle())
     }
 }
 
 struct ParseChip: View {
+    @Environment(\.look) var look
     let result: ParseResult
     let lead: Int
     let now: Date
@@ -224,9 +232,9 @@ struct ParseChip: View {
         let leadText = lead % 60 == 0 ? "\(lead / 60)시간" : "\(lead)분"
         let rest = result.repeatRule == .none ? "일정으로 추가, \(leadText) 전에 알려요" : "반복 일정으로 추가, 첫 회 \(day)"
         HStack(spacing: 5) {
-            Image(systemName: "clock").font(.system(size: 11, weight: .semibold)).foregroundColor(Palette.accent)
-            Text(when).font(Fonts.num(13, .bold)).foregroundColor(Palette.accent)
-            Text(rest).font(Fonts.ui(11.5)).foregroundColor(Palette.sub).lineLimit(1).truncationMode(.tail)
+            Image(systemName: "clock").font(.system(size: 11, weight: .semibold)).foregroundColor(look.accent)
+            Text(when).font(Fonts.num(13, .bold)).foregroundColor(look.accent)
+            Text(rest).font(Fonts.ui(11.5)).foregroundColor(look.sub).lineLimit(1).truncationMode(.tail)
             Spacer(minLength: 0)
             IconButton(systemName: "xmark", help: "시간 없이 추가", size: 20, action: onClear)
         }
@@ -235,20 +243,21 @@ struct ParseChip: View {
 }
 
 struct UndoBar: View {
+    @Environment(\.look) var look
     let info: UndoInfo
     let onUndo: () -> Void
 
     var body: some View {
         HStack {
-            Text(info.message).font(Fonts.ui(12)).foregroundColor(Palette.sub).lineLimit(1).truncationMode(.tail)
+            Text(info.message).font(Fonts.ui(12)).foregroundColor(look.sub).lineLimit(1).truncationMode(.tail)
             Spacer(minLength: 8)
             Button("되돌리기", action: onUndo)
                 .buttonStyle(.plain)
                 .font(Fonts.ui(12, .bold))
-                .foregroundColor(Palette.accent)
+                .foregroundColor(look.accent)
         }
         .padding(.horizontal, 12)
         .frame(height: 34)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Palette.surface))
+        .surface(radius: 8)
     }
 }

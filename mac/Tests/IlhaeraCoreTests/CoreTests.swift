@@ -182,6 +182,38 @@ final class CoreTests: XCTestCase {
         XCTAssertNil(Reminders.nextUp([g1, g5], now: now))
     }
 
+    // ── 설정 ──
+
+    func testSettingsColorsAndGlass() throws {
+        var s = AppSettings()
+        XCTAssertEqual(s.accentColor, "#1E7A57")
+        XCTAssertEqual(s.markerColor, "#FFEC85")
+        XCTAssertEqual(s.glassTint, 35)
+        XCTAssertEqual(AppSettings.parseHex("#2F6BD8"), 0x2F6BD8)
+        XCTAssertEqual(AppSettings.parseHex("2f6bd8"), 0x2F6BD8)
+        XCTAssertNil(AppSettings.parseHex("#12345"))
+        XCTAssertNil(AppSettings.parseHex("blue"))
+        XCTAssertEqual(AppSettings.hexString(0x2F6BD8), "#2F6BD8")
+
+        s.theme = "glass"; s.accentColor = "nope"; s.glassTint = 250
+        s.normalize()
+        XCTAssertEqual(s.theme, "glass")
+        XCTAssertEqual(s.accentColor, "#1E7A57")
+        XCTAssertEqual(s.glassTint, 100)
+        s.theme = "neon"; s.normalize()
+        XCTAssertEqual(s.theme, "system")
+
+        // 저장했다가 다시 읽어도 그대로
+        var custom = AppSettings()
+        custom.theme = "glass"; custom.accentColor = "#7B4FD6"; custom.markerColor = "#A9DDFF"; custom.glassTint = 10
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: JSONEncoder().encode(custom))
+        XCTAssertEqual(decoded, custom)
+        // 예전 파일(새 항목 없음)은 기본값
+        let old = try JSONDecoder().decode(AppSettings.self, from: Data("{\"theme\":\"dark\"}".utf8))
+        XCTAssertEqual(old.accentColor, "#1E7A57")
+        XCTAssertEqual(old.glassTint, 35)
+    }
+
     // ── 저장 ──
 
     func testStorageRoundTripAndRecovery() throws {

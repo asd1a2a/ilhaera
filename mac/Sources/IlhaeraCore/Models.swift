@@ -129,13 +129,26 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var opacity: Int = 97
     public var reminderMinutes: Int = 30
     public var autoStartInitialized: Bool = false
+    /// "system" | "light" | "dark" | "glass"(리퀴드 글래스)
     public var theme: String = "system"
     public var showDone: Bool = false
+    /// 강조 색 (체크·버튼·진행률), "#RRGGBB"
+    public var accentColor: String = AppSettings.defaultAccent
+    /// 형광펜 색 (곧 시작할 일), "#RRGGBB"
+    public var markerColor: String = AppSettings.defaultMarker
+    /// 리퀴드 글래스의 불투명한 정도 0(가장 투명)~100
+    public var glassTint: Int = AppSettings.defaultGlassTint
+
+    public static let defaultAccent = "#1E7A57"
+    public static let defaultMarker = "#FFEC85"
+    public static let defaultGlassTint = 35
+    public static let themes = ["system", "light", "dark", "glass"]
 
     public init() {}
 
     enum CodingKeys: String, CodingKey {
         case alwaysOnTop, opacity, reminderMinutes, autoStartInitialized, theme, showDone
+        case accentColor, markerColor, glassTint
     }
 
     public init(from decoder: Decoder) throws {
@@ -146,13 +159,31 @@ public struct AppSettings: Codable, Equatable, Sendable {
         autoStartInitialized = (try? c.decodeIfPresent(Bool.self, forKey: .autoStartInitialized)) ?? false
         theme = (try? c.decodeIfPresent(String.self, forKey: .theme)) ?? "system"
         showDone = (try? c.decodeIfPresent(Bool.self, forKey: .showDone)) ?? false
+        accentColor = (try? c.decodeIfPresent(String.self, forKey: .accentColor)) ?? AppSettings.defaultAccent
+        markerColor = (try? c.decodeIfPresent(String.self, forKey: .markerColor)) ?? AppSettings.defaultMarker
+        glassTint = (try? c.decodeIfPresent(Int.self, forKey: .glassTint)) ?? AppSettings.defaultGlassTint
         normalize()
     }
 
     public mutating func normalize() {
         if opacity < 30 || opacity > 100 { opacity = 97 }
         if reminderMinutes < 1 || reminderMinutes > 24 * 60 { reminderMinutes = 30 }
-        if theme != "light" && theme != "dark" { theme = "system" }
+        if !AppSettings.themes.contains(theme) { theme = "system" }
+        if AppSettings.parseHex(accentColor) == nil { accentColor = AppSettings.defaultAccent }
+        if AppSettings.parseHex(markerColor) == nil { markerColor = AppSettings.defaultMarker }
+        glassTint = max(0, min(100, glassTint))
+    }
+
+    /// "#RRGGBB" → 0xRRGGBB
+    public static func parseHex(_ text: String) -> UInt32? {
+        var t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.hasPrefix("#") { t.removeFirst() }
+        guard t.count == 6, let value = UInt32(t, radix: 16) else { return nil }
+        return value
+    }
+
+    public static func hexString(_ value: UInt32) -> String {
+        String(format: "#%06X", value & 0xFFFFFF)
     }
 }
 

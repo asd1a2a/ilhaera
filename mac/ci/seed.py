@@ -1,4 +1,4 @@
-"""CI 스크린샷용 예시 데이터. 사용: python3 seed.py light|dark"""
+"""CI 스크린샷용 예시 데이터. 사용: python3 seed.py light|dark|glass"""
 import json, os, sys, datetime as dt
 
 theme = sys.argv[1] if len(sys.argv) > 1 else "light"
@@ -19,9 +19,14 @@ for i in items:
     i.setdefault("done", False)
     i["created"] = f(now)
 
+settings = {"theme": theme, "reminderMinutes": 30, "autoStartInitialized": True, "opacity": 100}
+if theme == "glass":
+    # 색 바꾸기도 함께 확인: 보라 강조 + 하늘색 형광펜, 꽤 투명한 유리
+    settings.update(accentColor="#7B4FD6", markerColor="#A9DDFF", glassTint=20)
+
 folder = os.path.expanduser("~/Library/Application Support/Ilhaera")
 os.makedirs(folder, exist_ok=True)
 with open(os.path.join(folder, "todos.json"), "w", encoding="utf-8") as fp:
     json.dump({"version": 1, "items": items,
-               "settings": {"theme": theme, "reminderMinutes": 30, "autoStartInitialized": True, "opacity": 100}},
+               "settings": settings},
               fp, ensure_ascii=False)

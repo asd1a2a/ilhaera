@@ -17,18 +17,27 @@ jobs:
       - name: 일해라.app 빌드
         working-directory: mac
         run: ./build-app.sh
+      - name: Xcode 목록
+        run: ls /Applications | grep -i xcode || true
       - name: 실행하고 찍기
         run: |
           mkdir -p shots
-          for theme in light dark; do
+          shoot() {  # shoot <이름> <테마> [앱 인자...]
+            local name="$1" theme="$2"; shift 2
             python3 mac/ci/seed.py "$theme"
-            open "mac/build/일해라.app"
+            open "mac/build/일해라.app" --args "$@"
             sleep 10
-            screencapture -x "shots/$theme.png"
+            screencapture -x "shots/$name.png"
             pkill -x Ilhaera || true
             sleep 2
-          done
-          defaults read com.asd1a2a.ilhaera || true
+          }
+          shoot light light
+          shoot dark dark
+          # 유리 뒤로 비칠 그림을 먼저 띄운다
+          open -a Preview mac/ci/backdrop.png
+          sleep 5
+          shoot glass glass
+          shoot settings glass --settings
           ls -la shots
       # 결과를 ci-output 브랜치에 올린다 (artifact 를 받을 수 없는 환경에서도 git 으로 가져갈 수 있게)
       - name: ci-output 브랜치에 올리기

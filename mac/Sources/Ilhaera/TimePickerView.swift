@@ -25,6 +25,7 @@ struct PickerValue: Equatable {
 
 /// 날짜 칩(오늘/내일/모레/달력) + 휴대폰 알람식 시간 + 빠른 선택 + 반복 + 알림 시각 요약.
 struct TimePickerView: View {
+    @Environment(\.look) var look
     @Binding var value: PickerValue
     let lead: Int
     let now: Date
@@ -98,7 +99,7 @@ struct TimePickerView: View {
             ampmToggle
             HStack(alignment: .center, spacing: 2) {
                 Spinner(text: "\(value.hour % 12 == 0 ? 12 : value.hour % 12)", up: { stepHour(1) }, down: { stepHour(-1) })
-                Text(":").font(Fonts.num(26, .bold)).foregroundColor(Palette.faint).padding(.bottom, 3)
+                Text(":").font(Fonts.num(26, .bold)).foregroundColor(look.faint).padding(.bottom, 3)
                 Spinner(text: String(format: "%02d", value.minute), up: { stepMinute(1) }, down: { stepMinute(-1) })
             }
             Spacer(minLength: 0)
@@ -111,16 +112,16 @@ struct TimePickerView: View {
             ampmButton("오후", selected: value.hour >= 12) { if value.hour < 12 { value.hour += 12 } }
         }
         .padding(3)
-        .background(Capsule().fill(Palette.surface))
+        .background(Capsule().fill(look.surface))
     }
 
     private func ampmButton(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
                 .font(Fonts.ui(12, .semibold))
-                .foregroundColor(selected ? Palette.text : Palette.faint)
+                .foregroundColor(selected ? look.text : look.faint)
                 .frame(width: 42, height: 24)
-                .background(Capsule().fill(selected ? Palette.back : Color.clear))
+                .background(Capsule().fill(selected ? look.back : Color.clear))
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -177,17 +178,18 @@ struct TimePickerView: View {
         let leadText = lead % 60 == 0 ? "\(lead / 60)시간" : "\(lead)분"
         func day(_ d: Date) -> String { TimeText.dayWord(d, now: current) ?? TimeText.shortDate(d, now: current) }
         if rule == .none {
-            if due <= current { return ("이미 지난 시간이에요. 알림 없이 추가돼요.", Palette.danger) }
-            if alert <= current { return ("\(day(due)) \(TimeText.korean12(due)) 일정, 추가하면 바로 알려요", Palette.warn) }
-            return ("\(day(alert)) \(TimeText.korean12(alert))에 알려요 (\(leadText) 전)", Palette.sub)
+            if due <= current { return ("이미 지난 시간이에요. 알림 없이 추가돼요.", look.danger) }
+            if alert <= current { return ("\(day(due)) \(TimeText.korean12(due)) 일정, 추가하면 바로 알려요", look.warn) }
+            return ("\(day(alert)) \(TimeText.korean12(alert))에 알려요 (\(leadText) 전)", look.sub)
         }
         let first = alert > current ? alert : due
-        return ("\(day(first)) \(TimeText.korean12(first)) 첫 알림, 이후 \(Recurrence.label(rule, due)) 반복", Palette.sub)
+        return ("\(day(first)) \(TimeText.korean12(first)) 첫 알림, 이후 \(Recurrence.label(rule, due)) 반복", look.sub)
     }
 }
 
 /// ▲ 숫자 ▼
 struct Spinner: View {
+    @Environment(\.look) var look
     let text: String
     let up: () -> Void
     let down: () -> Void
@@ -197,7 +199,7 @@ struct Spinner: View {
             ArrowButton(systemName: "chevron.up", action: up)
             Text(text)
                 .font(Fonts.num(30, .bold))
-                .foregroundColor(Palette.text)
+                .foregroundColor(look.text)
                 .frame(minWidth: 46)
             ArrowButton(systemName: "chevron.down", action: down)
         }
@@ -205,6 +207,7 @@ struct Spinner: View {
 }
 
 struct ArrowButton: View {
+    @Environment(\.look) var look
     let systemName: String
     let action: () -> Void
     @State var hovering = false
@@ -213,7 +216,7 @@ struct ArrowButton: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 10, weight: .bold))
-                .foregroundColor(hovering ? Palette.accent : Palette.faint)
+                .foregroundColor(hovering ? look.accent : look.faint)
                 .frame(width: 46, height: 14)
                 .contentShape(Rectangle())
         }

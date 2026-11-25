@@ -207,6 +207,15 @@ static class Tests
             Check(st.AccentColor == "#1E7A57" && st.Theme == "glass", "normalize colors, keep glass");
             st.Theme = "neon"; st.Normalize();
             Check(st.Theme == "system", "unknown theme => system");
+
+            // 유리 투명도: 정한 적 없으면 기본값, 범위를 벗어나면 버린다
+            Check(st.GlassTint == null && st.GlassTintOrDefault == AppSettings.DefaultGlassTint, "glass tint default");
+            st.GlassTint = 20; st.Normalize();
+            Check(st.GlassTintOrDefault == 20, "glass tint kept");
+            st.GlassTint = 0; st.Normalize();
+            Check(st.GlassTint == 0 && st.GlassTintOrDefault == 0, "glass tint 0 is a value");
+            st.GlassTint = 140; st.Normalize();
+            Check(st.GlassTint == null && st.GlassTintOrDefault == AppSettings.DefaultGlassTint, "glass tint out of range => default");
         }
 
         // ── 저장/불러오기 ──

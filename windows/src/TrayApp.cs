@@ -18,6 +18,9 @@ namespace TodoWidget
     {
         static readonly int[] OpacityChoices = { 100, 95, 90, 80, 70, 60 };
         static readonly int[] LeadChoices = { 5, 10, 15, 30, 60, 120 };
+        // 유리 투명도: 값이 작을수록 뒤가 많이 비친다
+        static readonly int[] GlassChoices = { 10, 20, 35, 50, 65, 80 };
+        static readonly string[] GlassNames = { "아주 투명", "투명", "보통", "조금 진하게", "진하게", "아주 진하게" };
 
         readonly Storage storage;
         readonly NotifyIcon tray;
@@ -28,7 +31,7 @@ namespace TodoWidget
         bool saveErrorShown;
         Action undoAction;
 
-        ToolStripMenuItem miToggle, miTop, miAuto, miClearDone, miOpacity, miLead, miTheme, miAccent, miMarker;
+        ToolStripMenuItem miToggle, miTop, miAuto, miClearDone, miOpacity, miGlass, miLead, miTheme, miAccent, miMarker;
         string appliedLook;
 
         static readonly string[][] AccentChoices =
@@ -55,7 +58,7 @@ namespace TodoWidget
             invoker.CreateControl();
 
             appliedLook = LookKey();
-            Theme.Apply(Theme.ResolveDark(Settings.Theme), Settings.AccentColor, Settings.MarkerColor);
+            ApplyColors();
             BuildMenu();
             tray = new NotifyIcon
             {
@@ -111,6 +114,19 @@ namespace TodoWidget
                 catch (Exception) { }
             }) { IsBackground = true, Name = "ShowListener" };
             listener.Start();
+
+            // 자동 확인(CI): 눌러 볼 자리를 파일로 적어 둔다
+            string ciDir = Environment.GetEnvironmentVariable("ILHAERA_CI_DIR");
+            if (!string.IsNullOrEmpty(ciDir))
+            {
+                var ciTimer = new Timer { Interval = 500 };
+                ciTimer.Tick += (s, e) =>
+                {
+                    try { if (WidgetAlive) System.IO.File.WriteAllText(System.IO.Path.Combine(ciDir, "layout.json"), widget.DescribeLayout()); }
+                    catch (Exception) { }
+                };
+                ciTimer.Start();
+            }
 
             // 메시지 루프가 돈 직후 첫 알림 확인 (꺼져 있는 동안 놓친 일정 포함)
             invoker.BeginInvoke((Action)CheckReminders);
@@ -276,10 +292,15 @@ namespace TodoWidget
             ApplyTheme();
         }
 
-        /// <summary>지금 적용해야 할 모양(밝기 + 강조 색 + 형광펜 색)을 한 줄로.</summary>
+        /// <summary>지금 적용해야 할 모양(밝기 + 유리 + 강조 색 + 형광펜 색)을 한 줄로.</summary>
         string LookKey()
         {
-            return Theme.ResolveDark(Settings.Theme) + "|" + Settings.AccentColor + "|" + Settings.MarkerColor;
+            return Theme.ResolveDark(Settings.Theme) + "|" + Theme.ResolveGlass(Settings.Theme) + "|" + Settings.AccentColor + "|" + Settings.MarkerColor;
+        }
+
+        void ApplyColors()
+        {
+            Theme.Apply(Theme.ResolveDark(Settings.Theme), Settings.AccentColor, Settings.MarkerColor, Theme.ResolveGlass(Settings.Theme));
         }
 
         void SetColor(bool accent, string hex)
@@ -310,10 +331,10 @@ namespace TodoWidget
             string key = LookKey();
             if (key == appliedLook) return;
             appliedLook = key;
-            Theme.Apply(Theme.ResolveDark(Settings.Theme), Settings.AccentColor, Settings.MarkerColor);
+            ApplyColors();
             Menu.BackColor = Theme.Surface;
             Menu.ForeColor = Theme.Text;
-            foreach (var mi in new[] { miOpacity, miLead, miTheme, miAccent, miMarker })
+            foreach (var mi in new[] { miOpacity, miGlass, miLead, miTheme, miAccent, miMarker })
             {
                 mi.DropDown.BackColor = Theme.Surface;
                 mi.DropDown.ForeColor = Theme.Text;
@@ -331,7 +352,7 @@ namespace TodoWidget
 
         void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
         {
-            if (e.Category == UserPreferenceCategory.General && Settings.Theme == "system")
+            if (e.Category == UserPreferenceCategory.General && (Settings.Theme == "system" || Settings.Theme == "glass"))
                 invoker.BeginInvoke((Action)ApplyTheme);
         }
 
@@ -449,6 +470,21 @@ namespace TodoWidget
             }
             Menu.Items.Add(miOpacity);
 
+            // 리퀴드 글래스 테마에서만 보인다: 유리 뒤로 바탕화면이 얼마나 비칠지
+            miGlass = SubMenu("유리 투명도");
+            for (int i = 0; i < GlassChoices.Length; i++)
+            {
+                int value = GlassChoices[i];
+                var mi = AddItem(miGlass.DropDownItems, GlassNames[i], () =>
+                {
+                    Settings.GlassTint = value;
+                    Save();
+                    if (WidgetAlive) widget.ApplySettings();
+                });
+                mi.Tag = value;
+            }
+            Menu.Items.Add(miGlass);
+
             miLead = SubMenu("알림 시점");
             foreach (var m in LeadChoices)
             {
@@ -465,7 +501,9 @@ namespace TodoWidget
             Menu.Items.Add(miLead);
 
             miTheme = SubMenu("테마");
-            foreach (var t in new[] { new[] { "system", "Windows 설정 따르기" }, new[] { "light", "밝게" }, new[] { "dark", "어둡게" } })
+            var themes = new List<string[]> { new[] { "system", "Windows 설정 따르기" }, new[] { "light", "밝게" }, new[] { "dark", "어둡게" } };
+            if (Theme.GlassSupported) themes.Add(new[] { "glass", "리퀴드 글래스" });
+            foreach (var t in themes)
             {
                 string value = t[0];
                 var mi = AddItem(miTheme.DropDownItems, t[1], () => SetTheme(value));
@@ -502,8 +540,14 @@ namespace TodoWidget
                 miClearDone.Enabled = Data.Items.Any(i => i.Done);
                 foreach (ToolStripMenuItem mi in miOpacity.DropDownItems) mi.Checked = (int)mi.Tag == Settings.OpacityPercent;
                 foreach (ToolStripMenuItem mi in miLead.DropDownItems) mi.Checked = (int)mi.Tag == Settings.ReminderMinutes;
-                foreach (ToolStripMenuItem mi in miTheme.DropDownItems)
-                    mi.Checked = (string)mi.Tag == Settings.Theme || ((string)mi.Tag == "system" && Settings.Theme == "glass");
+                // 유리를 쓸 수 없는 PC 에서 "glass" 로 저장돼 있으면 시스템 설정처럼 보인다
+                bool glass = Theme.ResolveGlass(Settings.Theme);
+                string shown = Settings.Theme == "glass" && !glass ? "system" : Settings.Theme;
+                foreach (ToolStripMenuItem mi in miTheme.DropDownItems) mi.Checked = (string)mi.Tag == shown;
+                miGlass.Visible = glass;
+                miOpacity.Visible = !glass; // 유리 테마에서는 유리 투명도가 대신한다
+                int tint = Nearest(GlassChoices, Settings.GlassTintOrDefault);
+                foreach (ToolStripMenuItem mi in miGlass.DropDownItems) mi.Checked = (int)mi.Tag == tint;
                 CheckColor(miAccent, Settings.AccentColor);
                 CheckColor(miMarker, Settings.MarkerColor);
             };
@@ -522,6 +566,15 @@ namespace TodoWidget
             var custom = AddItem(menu.DropDownItems, "직접 고르기…", () => PickColor(accent));
             custom.Tag = "custom";
             return menu;
+        }
+
+        /// <summary>목록에서 값에 가장 가까운 것 (Mac 에서 슬라이더로 정한 값도 가까운 단계에 체크).</summary>
+        static int Nearest(int[] choices, int value)
+        {
+            int best = choices[0];
+            foreach (int c in choices)
+                if (Math.Abs(c - value) < Math.Abs(best - value)) best = c;
+            return best;
         }
 
         /// <summary>고른 색에 체크. 목록에 없는 색이면 "직접 고르기"에 체크.</summary>

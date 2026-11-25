@@ -77,6 +77,7 @@ namespace TodoWidget.UI
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
+            Theme.Prepare(g);
             g.Clear(BackColor);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             var now = DateTime.Now;
@@ -181,6 +182,7 @@ namespace TodoWidget.UI
         protected override void OnMouseLeave(EventArgs e)
         {
             base.OnMouseLeave(e);
+            if (WidgetForm.StillOver(this)) return;
             if (hoverStrip) { hoverStrip = false; Cursor = Cursors.Default; Invalidate(); }
         }
 
@@ -235,6 +237,7 @@ namespace TodoWidget.UI
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
+            Theme.Prepare(g);
             g.Clear(BackColor);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             var now = DateTime.Now;

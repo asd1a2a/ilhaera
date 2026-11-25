@@ -15,11 +15,14 @@ namespace TodoWidget.UI
     static class Theme
     {
         public static bool IsDark { get; private set; }
+        /// <summary>리퀴드 글래스: 위젯 바탕(Back)이 뚫려서 뒤에 깔린 유리판이 비친다.</summary>
+        public static bool IsGlass { get; private set; }
 
         public static Color Back { get; private set; }        // 위젯 바탕
         public static Color Surface { get; private set; }     // 입력칸
         public static Color Hover { get; private set; }       // 줄 hover
         public static Color Pressed { get; private set; }
+        public static Color Raised { get; private set; }      // 판 위에 떠 있는 조각 (선택된 오전/오후)
         public static Color Border { get; private set; }
         public static Color Text { get; private set; }
         public static Color SubText { get; private set; }
@@ -45,9 +48,11 @@ namespace TodoWidget.UI
         }
 
         /// <summary>테마와 사용자가 고른 강조 색·형광펜 색으로 색 한 벌을 만든다.</summary>
-        public static void Apply(bool dark, string accentHex, string markerHex)
+        public static void Apply(bool dark, string accentHex, string markerHex, bool glass = false)
         {
             ApplyBase(dark);
+            IsGlass = glass;
+            if (glass) ApplyGlass(dark);
 
             // 강조 색: 어두운 바탕에서는 조금 밝게
             int accentBase = Core.ColorHex.ParseOr(accentHex, 0x1E7A57);
@@ -76,7 +81,7 @@ namespace TodoWidget.UI
             IsDark = dark;
             if (!dark)
             {
-                Back = Rgb(0xFFFFFF); Surface = Rgb(0xF1F3F5); Hover = Rgb(0xF5F6F8); Pressed = Rgb(0xE6E9ED);
+                Back = Rgb(0xFFFFFF); Surface = Rgb(0xF1F3F5); Hover = Rgb(0xF5F6F8); Pressed = Rgb(0xE6E9ED); Raised = Back;
                 Border = Rgb(0xDDE1E6); Text = Rgb(0x1D2127); SubText = Rgb(0x5F6774); Faint = Rgb(0x9AA1AC);
                 Accent = Rgb(0x1E7A57); AccentHover = Rgb(0x248F66); OnAccent = Color.White;
                 Marker = Rgb(0xFFEC85); MarkerText = Rgb(0x4D3B00);
@@ -84,12 +89,42 @@ namespace TodoWidget.UI
             }
             else
             {
-                Back = Rgb(0x1E2023); Surface = Rgb(0x2A2D31); Hover = Rgb(0x26292D); Pressed = Rgb(0x34383D);
+                Back = Rgb(0x1E2023); Surface = Rgb(0x2A2D31); Hover = Rgb(0x26292D); Pressed = Rgb(0x34383D); Raised = Back;
                 Border = Rgb(0x383C42); Text = Rgb(0xECEEF0); SubText = Rgb(0x9EA5AF); Faint = Rgb(0x6C737D);
                 Accent = Rgb(0x46C68A); AccentHover = Rgb(0x5DD49C); OnAccent = Rgb(0x0E1A14);
                 Marker = Rgb(0x4C4320); MarkerText = Rgb(0xFFE27A);
                 Warn = Rgb(0xFFC24D); Danger = Rgb(0xFF6B6B); Saturday = Rgb(0x74A3FF);
             }
+        }
+
+        /// <summary>
+        /// 유리 테마: Back 은 "뚫는 색"이라 그 색으로 칠한 곳은 화면에 나오지 않고 유리가 비친다.
+        /// 다른 색과 겹치면 안 되므로 흰색/검정에서 살짝 비킨 색을 쓴다. 판(Surface)과 글자는 불투명하게 남는다.
+        /// </summary>
+        static void ApplyGlass(bool dark)
+        {
+            if (!dark)
+            {
+                Back = Rgb(0xFAFBFC);
+                Surface = Rgb(0xFFFFFF); Hover = Rgb(0xF1F4F8); Pressed = Rgb(0xE2E7ED); Raised = Rgb(0xE9EEF4);
+                Border = Rgb(0xCDD4DD); Text = Rgb(0x14171C); SubText = Rgb(0x3B424D); Faint = Rgb(0x687080);
+                Warn = Rgb(0x8F5200); Danger = Rgb(0xC62F2F); Saturday = Rgb(0x2459C4);
+            }
+            else
+            {
+                Back = Rgb(0x1C1D1F);
+                Surface = Rgb(0x2B2E33); Hover = Rgb(0x34383E); Pressed = Rgb(0x41464D); Raised = Rgb(0x454A52);
+                Border = Rgb(0x4D525A); Text = Rgb(0xF4F5F7); SubText = Rgb(0xC9CED6); Faint = Rgb(0x9299A4);
+                Warn = Rgb(0xFFC24D); Danger = Rgb(0xFF7A7A); Saturday = Rgb(0x8AB2FF);
+            }
+        }
+
+        /// <summary>
+        /// 그리기 전에 부른다. 유리 위 글자는 색 번짐(ClearType) 없이 회색조로 다듬어야 가장자리가 깨끗하다.
+        /// </summary>
+        public static void Prepare(Graphics g)
+        {
+            if (IsGlass) g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
         }
 
         static Color Rgb(int v) { return Color.FromArgb((v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF); }
@@ -108,6 +143,11 @@ namespace TodoWidget.UI
             catch (Exception) { }
             return false;
         }
+
+        /// <summary>이 PC 에서 유리 테마를 쓸 수 있는지 (Windows 10 1803 이상).</summary>
+        public static bool GlassSupported { get { return Native.IsWindows && Native.Build >= 17134; } }
+
+        public static bool ResolveGlass(string setting) { return setting == "glass" && GlassSupported; }
 
         public static bool ResolveDark(string setting)
         {

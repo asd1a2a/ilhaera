@@ -139,15 +139,18 @@ namespace TodoWidget.Core
         [DataMember(Name = "reminderMinutes", Order = 6)] public int ReminderMinutes { get; set; }
         [DataMember(Name = "autoStartInitialized", Order = 7)] public bool AutoStartInitialized { get; set; }
         [DataMember(Name = "trayHintShown", Order = 8)] public bool TrayHintShown { get; set; }
-        /// <summary>"system" | "light" | "dark"</summary>
+        /// <summary>"system" | "light" | "dark" | "glass"(리퀴드 글래스)</summary>
         [DataMember(Name = "theme", Order = 9)] public string Theme { get; set; }
         [DataMember(Name = "showDone", Order = 10)] public bool ShowDone { get; set; }
         /// <summary>강조 색 (체크·버튼·진행률), "#RRGGBB"</summary>
         [DataMember(Name = "accentColor", Order = 11)] public string AccentColor { get; set; }
         /// <summary>형광펜 색 (곧 시작할 일), "#RRGGBB"</summary>
         [DataMember(Name = "markerColor", Order = 12)] public string MarkerColor { get; set; }
-        /// <summary>Mac 버전의 리퀴드 글래스 투명도. Windows 에서는 쓰지 않고 값만 보존한다.</summary>
+        /// <summary>리퀴드 글래스의 유리 투명도: 0(아주 투명) ~ 100(불투명). 정한 적이 없으면 null.</summary>
         [DataMember(Name = "glassTint", Order = 13, EmitDefaultValue = false)] public int? GlassTint { get; set; }
+
+        public const int DefaultGlassTint = 35;
+        public int GlassTintOrDefault { get { return GlassTint ?? DefaultGlassTint; } }
 
         public AppSettings() { SetDefaults(); }
 
@@ -166,8 +169,8 @@ namespace TodoWidget.Core
         public void Normalize()
         {
             if (OpacityPercent < 30 || OpacityPercent > 100) OpacityPercent = 97;
-            // "glass" 는 Mac 전용 테마: 값은 두고 Windows 에서는 시스템 설정처럼 보여 준다
             if (Theme != "light" && Theme != "dark" && Theme != "glass") Theme = "system";
+            if (GlassTint.HasValue && (GlassTint.Value < 0 || GlassTint.Value > 100)) GlassTint = null;
             int rgb;
             if (!ColorHex.TryParse(AccentColor, out rgb)) AccentColor = ColorHex.DefaultAccent;
             if (!ColorHex.TryParse(MarkerColor, out rgb)) MarkerColor = ColorHex.DefaultMarker;

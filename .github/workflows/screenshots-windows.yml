@@ -1,0 +1,42 @@
+name: screenshots-windows
+
+# Windows 앱을 실제 Windows 에서 띄워 화면을 찍고 마우스로 눌러 본다 (PR 과 수동 실행).
+on:
+  pull_request:
+    paths: ["windows/**", "mac/ci/seed.py", ".github/workflows/screenshots-windows.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]   # Windows 10 계열 / Windows 11 계열
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: TodoWidget.exe 빌드
+        run: dotnet build -c Release windows/src/TodoWidget.csproj -o out
+      - name: 실행하고 찍기
+        shell: powershell
+        run: powershell -ExecutionPolicy Bypass -File windows/ci/check.ps1 -Exe out\TodoWidget.exe -Out shots
+      # 결과를 ci-output-<OS> 브랜치에 올린다 (artifact 를 받을 수 없는 환경에서도 git 으로 가져갈 수 있게)
+      - name: ci-output 브랜치에 올리기
+        if: always()
+        shell: bash
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p upload
+          cp shots/* upload/ || true
+          cp out/TodoWidget.exe upload/ || true
+          cd upload
+          git init -q -b "ci-output-${{ matrix.os }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "CI output for ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "ci-output-${{ matrix.os }}"

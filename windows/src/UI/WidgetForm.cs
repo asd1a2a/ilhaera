@@ -24,6 +24,7 @@ namespace TodoWidget.UI
         readonly Timer undoTimer;
         readonly ContextMenuStrip itemMenu;
         readonly bool drawOwnBorder;
+        readonly GlassPane pane; // 리퀴드 글래스 테마에서만: 바로 아래에 깔리는 유리판
         IntPtr pinnedOwner;
         bool parseActive, parseDismissed;
         string parsedText;
@@ -35,6 +36,7 @@ namespace TodoWidget.UI
         public WidgetForm(TrayApp app)
         {
             this.app = app;
+            if (Theme.IsGlass) pane = new GlassPane(this, Theme.IsDark, app.Settings.GlassTintOrDefault);
             SuspendLayout();
             AutoScaleMode = AutoScaleMode.None;
             FormBorderStyle = FormBorderStyle.None;
@@ -44,6 +46,7 @@ namespace TodoWidget.UI
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.Manual;
             BackColor = Theme.Back;
+            if (pane != null) TransparencyKey = Theme.Back; // 바탕을 뚫어 유리판이 비치게
             ForeColor = Theme.Text;
             Text = "일해라";
             Icon = Theme.LoadIcon(new Size(32, 32));
@@ -147,7 +150,8 @@ namespace TodoWidget.UI
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            Native.RoundCorners(Handle);
+            if (pane != null) Native.SetOwner(Handle, pane.Handle); // 유리판 바로 위에 붙어 다닌다
+            else Native.RoundCorners(Handle);
             pinnedOwner = IntPtr.Zero;
             EnsurePinned();
         }
@@ -156,14 +160,114 @@ namespace TodoWidget.UI
         public void EnsurePinned()
         {
             if (!IsHandleCreated || Native.IsAlive(pinnedOwner)) return;
-            pinnedOwner = Native.PinToDesktop(Handle);
+            pinnedOwner = Native.PinToDesktop(pane != null ? pane.Handle : Handle);
+        }
+
+        // ── 유리판 ──
+
+        bool PaneAlive { get { return pane != null && !pane.IsDisposed; } }
+
+        void SyncPane()
+        {
+            if (PaneAlive && pane.Bounds != Bounds) pane.Bounds = Bounds;
+        }
+
+        protected override void OnLocationChanged(EventArgs e)
+        {
+            base.OnLocationChanged(e);
+            SyncPane();
+        }
+
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+            if (!PaneAlive) return;
+            if (Visible)
+            {
+                SyncPane();
+                if (!pane.Visible) pane.Show();
+                Native.PlaceBehind(pane.Handle, Handle);
+            }
+            else pane.Hide();
+        }
+
+        protected override void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            if (PaneAlive && pane.Visible) Native.PlaceBehind(pane.Handle, Handle);
+        }
+
+        protected override void OnResizeBegin(EventArgs e)
+        {
+            base.OnResizeBegin(e);
+            if (PaneAlive) pane.SetMoving(true);
+        }
+
+        /// <summary>유리판이 받은 마우스 누름: 위젯을 앞으로.</summary>
+        public void ActivateFromGlass()
+        {
+            if (ActiveForm != this) Activate();
+        }
+
+        /// <summary>화면의 그 자리에 있는 가장 안쪽 컨트롤 (없으면 위젯 자신).</summary>
+        public Control ControlAt(Point screen)
+        {
+            // Control.GetChildAtPoint 는 64비트에서 좌표를 잘못 넘기는 .NET Framework 버그가 있어 직접 찾는다.
+            Control c = this;
+            for (;;)
+            {
+                Control hit = null;
+                var p = c.PointToClient(screen);
+                foreach (Control child in c.Controls) // 앞에 있는 것부터
+                {
+                    if (!child.Visible || !child.Enabled || !child.IsHandleCreated || !child.Bounds.Contains(p)) continue;
+                    hit = child;
+                    break;
+                }
+                if (hit == null) return c;
+                c = hit;
+            }
+        }
+
+        /// <summary>유리 테마에서 그 자리가 뚫려 있어 마우스가 유리판으로 떨어지는지.</summary>
+        public static bool OnGlass(Control c, Point screen)
+        {
+            if (!Theme.IsGlass || c.IsDisposed) return false;
+            var w = c.FindForm() as WidgetForm;
+            return w != null && w.PaneAlive && w.pane.IsHandleCreated && Native.WindowAt(screen) == w.pane.Handle;
+        }
+
+        /// <summary>
+        /// 유리 테마: 커서가 아직 이 컨트롤 위에 있는지. 뚫린 곳 위에서는 Windows 가 "벗어났다"고 계속 알리므로
+        /// 컨트롤은 이것이 true 인 동안 그 알림을 무시한다.
+        /// </summary>
+        public static bool StillOver(Control c)
+        {
+            if (!Theme.IsGlass || c.IsDisposed || !c.IsHandleCreated) return false;
+            var w = c.FindForm() as WidgetForm;
+            if (w == null || !w.PaneAlive || !w.pane.IsHandleCreated) return false;
+            var p = MousePosition;
+            if (!c.ClientRectangle.Contains(c.PointToClient(p))) return false;
+            var top = Native.WindowAt(p);
+            return top == c.Handle || (top == w.pane.Handle && w.ControlAt(p) == c);
         }
 
         public void ApplySettings()
         {
             var s = app.Settings;
-            TopMost = s.AlwaysOnTop;
-            Opacity = Math.Max(0.3, Math.Min(1.0, s.OpacityPercent / 100.0));
+            if (PaneAlive)
+            {
+                // 유리판이 투명도를 맡는다. 글자까지 흐려지지 않게 위젯은 불투명하게 둔다.
+                pane.TopMost = s.AlwaysOnTop;
+                pane.SetTint(s.GlassTintOrDefault);
+                TopMost = s.AlwaysOnTop;
+                Opacity = 1.0;
+            }
+            else
+            {
+                TopMost = s.AlwaysOnTop;
+                Opacity = Math.Max(0.3, Math.Min(1.0, s.OpacityPercent / 100.0));
+            }
             list.ReminderMinutes = s.ReminderMinutes;
             picker.ReminderMinutes = s.ReminderMinutes;
             list.Invalidate();
@@ -204,6 +308,7 @@ namespace TodoWidget.UI
         protected override void OnResizeEnd(EventArgs e)
         {
             base.OnResizeEnd(e);
+            if (PaneAlive) pane.SetMoving(false);
             app.SaveBounds(Bounds);
         }
 
@@ -222,20 +327,25 @@ namespace TodoWidget.UI
         {
             base.WndProc(ref m);
             if (m.Msg != Native.WM_NCHITTEST || (int)m.Result != Native.HTCLIENT) return;
+            m.Result = (IntPtr)EdgeAt(Native.ParamPoint(m.LParam));
+        }
 
-            // 테두리 근처에서는 크기 조절
-            long lp = m.LParam.ToInt64();
-            var p = PointToClient(new Point((short)(lp & 0xFFFF), (short)((lp >> 16) & 0xFFFF)));
+        /// <summary>테두리 근처면 크기 조절 방향(HTLEFT 등), 아니면 HTCLIENT.</summary>
+        public int EdgeAt(Point screen)
+        {
+            var p = PointToClient(screen);
+            if (!ClientRectangle.Contains(p)) return Native.HTCLIENT;
             int g = Px(7);
             bool l = p.X < g, r = p.X >= ClientSize.Width - g, t = p.Y < g / 2 + 1, b = p.Y >= ClientSize.Height - g;
-            if (t && l) m.Result = (IntPtr)Native.HTTOPLEFT;
-            else if (t && r) m.Result = (IntPtr)Native.HTTOPRIGHT;
-            else if (b && l) m.Result = (IntPtr)Native.HTBOTTOMLEFT;
-            else if (b && r) m.Result = (IntPtr)Native.HTBOTTOMRIGHT;
-            else if (l) m.Result = (IntPtr)Native.HTLEFT;
-            else if (r) m.Result = (IntPtr)Native.HTRIGHT;
-            else if (t) m.Result = (IntPtr)Native.HTTOP;
-            else if (b) m.Result = (IntPtr)Native.HTBOTTOM;
+            if (t && l) return Native.HTTOPLEFT;
+            if (t && r) return Native.HTTOPRIGHT;
+            if (b && l) return Native.HTBOTTOMLEFT;
+            if (b && r) return Native.HTBOTTOMRIGHT;
+            if (l) return Native.HTLEFT;
+            if (r) return Native.HTRIGHT;
+            if (t) return Native.HTTOP;
+            if (b) return Native.HTBOTTOM;
+            return Native.HTCLIENT;
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -305,6 +415,7 @@ namespace TodoWidget.UI
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
+            SyncPane();
             Invalidate();
         }
 
@@ -450,6 +561,28 @@ namespace TodoWidget.UI
             Invalidate();
         }
 
+        /// <summary>
+        /// 자동 확인용 (ILHAERA_CI_DIR 이 있을 때만 쓰인다): 눌러 볼 자리들을 화면 좌표로 적는다.
+        /// </summary>
+        public string DescribeLayout()
+        {
+            Func<Point, string> xy = p => "[" + p.X + "," + p.Y + "]";
+            Func<Control, Point> center = c => c.PointToScreen(new Point(c.Width / 2, c.Height / 2));
+            var check = list.FirstCheckOnScreen();
+            var row = check.HasValue ? new Point(list.PointToScreen(new Point(list.Width * 7 / 10, 0)).X, check.Value.Y) : (Point?)null;
+            return "{\"widget\":[" + Left + "," + Top + "," + Width + "," + Height + "]" +
+                   ",\"glass\":" + (PaneAlive ? "true" : "false") +
+                   ",\"pane\":" + (PaneAlive ? "[" + pane.Left + "," + pane.Top + "," + pane.Width + "," + pane.Height + "]" : "null") +
+                   ",\"drag\":" + xy(new Point(Left + Width / 2, Top + Px(4))) +
+                   ",\"size\":" + xy(new Point(Right - Px(3), Top + Height / 2)) +
+                   ",\"row\":" + (row.HasValue ? xy(row.Value) : "null") +
+                   ",\"mode\":\"" + (PaneAlive ? pane.ModeName : "") + "\"" +
+                   ",\"check\":" + (check.HasValue ? xy(check.Value) : "null") +
+                   ",\"menu\":" + xy(center(header.MenuButton)) +
+                   ",\"hide\":" + xy(center(header.HideButton)) +
+                   ",\"forwarded\":" + GlassPane.ForwardedClicks + "}";
+        }
+
         public void FocusInput()
         {
             input.Focus();
@@ -463,6 +596,7 @@ namespace TodoWidget.UI
                 itemMenu.Dispose();
             }
             base.Dispose(disposing);
+            if (disposing && PaneAlive) pane.Dispose();
         }
     }
 }

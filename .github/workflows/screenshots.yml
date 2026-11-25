@@ -42,8 +42,12 @@ jobs:
             pkill -x Ilhaera || true
             sleep 2
           }
+          # 빌드 서버는 "투명도 줄이기"가 켜져 있어 유리가 불투명하게 나온다. 꺼 본다.
+          defaults write com.apple.universalaccess reduceTransparency -bool false || true
+          defaults read com.apple.universalaccess reduceTransparency || true
           shoot light light
           shoot dark dark
+          shoot done done
           # 유리 뒤로 비칠 그림을 먼저 띄운다
           open -a Preview mac/ci/backdrop.png
           sleep 5

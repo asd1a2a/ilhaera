@@ -1,4 +1,4 @@
-"""CI 스크린샷용 예시 데이터. 사용: python3 seed.py light|dark|glass"""
+"""CI 스크린샷용 예시 데이터. 사용: python3 seed.py light|dark|glass|done"""
 import json, os, sys, datetime as dt
 
 theme = sys.argv[1] if len(sys.argv) > 1 else "light"
@@ -19,7 +19,13 @@ for i in items:
     i.setdefault("done", False)
     i["created"] = f(now)
 
-settings = {"theme": theme, "reminderMinutes": 30, "autoStartInitialized": True, "opacity": 100}
+# "done": 완료 줄(완료한 일 보기 / 모두 지우기)이 보이도록 목록을 줄이고 완료 항목을 펼친다
+show_done = theme == "done"
+if show_done:
+    theme = "light"
+    items = [i for i in items if i["id"] in ("a", "d", "e")] + [
+        dict(id="e2", text="회의록 정리", done=True, notified=True, completed=f(now), created=f(now))]
+settings = {"theme": theme, "reminderMinutes": 30, "autoStartInitialized": True, "opacity": 100, "showDone": show_done}
 if theme == "glass":
     # 색 바꾸기도 함께 확인: 보라 강조 + 하늘색 형광펜, 꽤 투명한 유리
     settings.update(accentColor="#7B4FD6", markerColor="#A9DDFF", glassTint=20)

@@ -28,8 +28,18 @@ namespace TodoWidget
         bool saveErrorShown;
         Action undoAction;
 
-        ToolStripMenuItem miToggle, miTop, miAuto, miClearDone, miOpacity, miLead, miTheme;
-        bool appliedDark;
+        ToolStripMenuItem miToggle, miTop, miAuto, miClearDone, miOpacity, miLead, miTheme, miAccent, miMarker;
+        string appliedLook;
+
+        static readonly string[][] AccentChoices =
+        {
+            new[] { "#1E7A57", "초록" }, new[] { "#2F6BD8", "파랑" }, new[] { "#7B4FD6", "보라" }, new[] { "#D6457B", "분홍" },
+            new[] { "#D9771E", "주황" }, new[] { "#1A8F99", "청록" }, new[] { "#3A3F47", "흑연" },
+        };
+        static readonly string[][] MarkerChoices =
+        {
+            new[] { "#FFEC85", "노랑" }, new[] { "#C7F089", "연두" }, new[] { "#A9DDFF", "하늘" }, new[] { "#FFC2DA", "분홍" }, new[] { "#FFD3A8", "살구" },
+        };
 
         public AppData Data { get; private set; }
         public AppSettings Settings { get { return Data.Settings; } }
@@ -44,8 +54,8 @@ namespace TodoWidget
             invoker = new Control();
             invoker.CreateControl();
 
-            appliedDark = Theme.ResolveDark(Settings.Theme);
-            Theme.Apply(appliedDark);
+            appliedLook = LookKey();
+            Theme.Apply(Theme.ResolveDark(Settings.Theme), Settings.AccentColor, Settings.MarkerColor);
             BuildMenu();
             tray = new NotifyIcon
             {
@@ -232,7 +242,7 @@ namespace TodoWidget
             if (WidgetAlive) widget.ShowUndo("'" + OneLine(item.Text) + "' 지움");
         }
 
-        void ClearDone()
+        public void ClearDone()
         {
             var done = Data.Items.Where(i => i.Done).ToList();
             if (done.Count == 0) return;
@@ -266,15 +276,44 @@ namespace TodoWidget
             ApplyTheme();
         }
 
+        /// <summary>지금 적용해야 할 모양(밝기 + 강조 색 + 형광펜 색)을 한 줄로.</summary>
+        string LookKey()
+        {
+            return Theme.ResolveDark(Settings.Theme) + "|" + Settings.AccentColor + "|" + Settings.MarkerColor;
+        }
+
+        void SetColor(bool accent, string hex)
+        {
+            if (accent) Settings.AccentColor = hex; else Settings.MarkerColor = hex;
+            Settings.Normalize();
+            Save();
+            ApplyTheme();
+        }
+
+        void PickColor(bool accent)
+        {
+            int current = ColorHex.ParseOr(accent ? Settings.AccentColor : Settings.MarkerColor, 0x1E7A57);
+            using (var dialog = new ColorDialog
+            {
+                FullOpen = true,
+                Color = Color.FromArgb((current >> 16) & 0xFF, (current >> 8) & 0xFF, current & 0xFF),
+            })
+            {
+                if (dialog.ShowDialog() != DialogResult.OK) return;
+                var c = dialog.Color;
+                SetColor(accent, ColorHex.Format((c.R << 16) | (c.G << 8) | c.B));
+            }
+        }
+
         void ApplyTheme()
         {
-            bool dark = Theme.ResolveDark(Settings.Theme);
-            if (dark == appliedDark) return;
-            appliedDark = dark;
-            Theme.Apply(dark);
+            string key = LookKey();
+            if (key == appliedLook) return;
+            appliedLook = key;
+            Theme.Apply(Theme.ResolveDark(Settings.Theme), Settings.AccentColor, Settings.MarkerColor);
             Menu.BackColor = Theme.Surface;
             Menu.ForeColor = Theme.Text;
-            foreach (var mi in new[] { miOpacity, miLead, miTheme })
+            foreach (var mi in new[] { miOpacity, miLead, miTheme, miAccent, miMarker })
             {
                 mi.DropDown.BackColor = Theme.Surface;
                 mi.DropDown.ForeColor = Theme.Text;
@@ -434,6 +473,11 @@ namespace TodoWidget
             }
             Menu.Items.Add(miTheme);
 
+            miAccent = ColorMenu("강조 색", AccentChoices, true);
+            miMarker = ColorMenu("형광펜 색", MarkerChoices, false);
+            Menu.Items.Add(miAccent);
+            Menu.Items.Add(miMarker);
+
             miAuto = AddItem(Menu.Items, "Windows 시작 시 자동 실행", () =>
             {
                 try { AutoStart.SetEnabled(!AutoStart.IsEnabled()); }
@@ -458,8 +502,42 @@ namespace TodoWidget
                 miClearDone.Enabled = Data.Items.Any(i => i.Done);
                 foreach (ToolStripMenuItem mi in miOpacity.DropDownItems) mi.Checked = (int)mi.Tag == Settings.OpacityPercent;
                 foreach (ToolStripMenuItem mi in miLead.DropDownItems) mi.Checked = (int)mi.Tag == Settings.ReminderMinutes;
-                foreach (ToolStripMenuItem mi in miTheme.DropDownItems) mi.Checked = (string)mi.Tag == Settings.Theme;
+                foreach (ToolStripMenuItem mi in miTheme.DropDownItems)
+                    mi.Checked = (string)mi.Tag == Settings.Theme || ((string)mi.Tag == "system" && Settings.Theme == "glass");
+                CheckColor(miAccent, Settings.AccentColor);
+                CheckColor(miMarker, Settings.MarkerColor);
             };
+        }
+
+        ToolStripMenuItem ColorMenu(string title, string[][] choices, bool accent)
+        {
+            var menu = SubMenu(title);
+            foreach (var choice in choices)
+            {
+                string hex = choice[0];
+                var mi = AddItem(menu.DropDownItems, choice[1], () => SetColor(accent, hex));
+                mi.Tag = hex;
+            }
+            menu.DropDownItems.Add(new ToolStripSeparator());
+            var custom = AddItem(menu.DropDownItems, "직접 고르기…", () => PickColor(accent));
+            custom.Tag = "custom";
+            return menu;
+        }
+
+        /// <summary>고른 색에 체크. 목록에 없는 색이면 "직접 고르기"에 체크.</summary>
+        static void CheckColor(ToolStripMenuItem menu, string current)
+        {
+            bool matched = false;
+            ToolStripMenuItem custom = null;
+            foreach (ToolStripItem item in menu.DropDownItems)
+            {
+                var mi = item as ToolStripMenuItem;
+                if (mi == null) continue;
+                if ((string)mi.Tag == "custom") { custom = mi; continue; }
+                mi.Checked = string.Equals((string)mi.Tag, current, StringComparison.OrdinalIgnoreCase);
+                matched |= mi.Checked;
+            }
+            if (custom != null) custom.Checked = !matched;
         }
 
         ToolStripMenuItem SubMenu(string text)

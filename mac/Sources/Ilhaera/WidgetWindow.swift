@@ -28,8 +28,10 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
         window.backgroundColor = Palette.nsBack
         window.delegate = self
 
-        let root = WidgetView(onMenu: onMenu, onHide: { [weak self] in self?.hide() })
-            .environmentObject(store)
+        let root = Themed {
+            WidgetView(onMenu: onMenu, onHide: { [weak self] in self?.hide() })
+        }
+        .environmentObject(store)
         window.contentView = NSHostingView(rootView: root)
 
         if !window.setFrameUsingName(Self.autosaveName) {
@@ -65,6 +67,11 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
         let s = store.settings
         window.level = s.alwaysOnTop ? .floating : .normal
         window.alphaValue = CGFloat(max(30, min(100, s.opacity))) / 100
+        // 리퀴드 글래스: 창 바탕을 비워서 뒤 화면이 유리 너머로 비치게 한다
+        let glass = s.theme == "glass"
+        window.isOpaque = !glass
+        window.backgroundColor = glass ? .clear : Palette.nsBack
+        window.invalidateShadow()
     }
 
     // 닫기(⌘W)는 숨기기로

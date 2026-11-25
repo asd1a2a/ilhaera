@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION="${VERSION:-1.2.1}"
+VERSION="${VERSION:-1.3.0}"
 BUILD="${BUILD:-1}"
 APP="build/일해라.app"
 

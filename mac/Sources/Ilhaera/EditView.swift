@@ -3,6 +3,7 @@ import IlhaeraCore
 
 /// 할 일 수정 시트.
 struct EditView: View {
+    @Environment(\.look) var look
     let item: TodoItem
     let lead: Int
     let onSave: (String, Date?, Repeat) -> Void
@@ -31,7 +32,7 @@ struct EditView: View {
                 .textFieldStyle(.plain)
                 .font(Fonts.ui(14))
                 .padding(10)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Palette.surface))
+                .background(RoundedRectangle(cornerRadius: 8).fill(look.glass ? look.pressed : look.surface))
             Toggle("시간 정하기", isOn: $hasTime)
                 .toggleStyle(.checkbox)
                 .font(Fonts.ui(13))
@@ -49,7 +50,6 @@ struct EditView: View {
         }
         .padding(20)
         .frame(width: 380)
-        .background(Palette.back)
     }
 
     private func save() {

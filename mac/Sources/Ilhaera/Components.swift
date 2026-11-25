@@ -43,6 +43,7 @@ struct FlowLayout: Layout {
 }
 
 struct ChipButton: View {
+    @Environment(\.look) var look
     let title: String
     var systemImage: String? = nil
     var selected = false
@@ -61,7 +62,7 @@ struct ChipButton: View {
             .padding(.horizontal, 11)
             .frame(height: 26)
             .background(Capsule().fill(fill))
-            .foregroundColor(selected ? Palette.onAccent : Palette.text)
+            .foregroundColor(selected ? look.onAccent : look.text)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -69,12 +70,13 @@ struct ChipButton: View {
     }
 
     private var fill: Color {
-        if selected { return Palette.accent }
-        return hovering ? Palette.pressed : Palette.surface
+        if selected { return look.accent }
+        return hovering ? look.pressed : look.surface
     }
 }
 
 struct IconButton: View {
+    @Environment(\.look) var look
     let systemName: String
     var help: String = ""
     var active = false
@@ -88,8 +90,8 @@ struct IconButton: View {
             Image(systemName: systemName)
                 .font(.system(size: 13, weight: .semibold))
                 .frame(width: size, height: size)
-                .background(RoundedRectangle(cornerRadius: 6).fill(hovering || active ? Palette.hover : Color.clear))
-                .foregroundColor(active ? Palette.accent : (hovering ? Palette.text : Palette.sub))
+                .background(RoundedRectangle(cornerRadius: 6).fill(hovering || active ? look.hover : Color.clear))
+                .foregroundColor(active ? look.accent : (hovering ? look.text : look.sub))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -99,6 +101,7 @@ struct IconButton: View {
 }
 
 struct CheckCircle: View {
+    @Environment(\.look) var look
     let done: Bool
     let overdue: Bool
     let action: () -> Void
@@ -109,13 +112,13 @@ struct CheckCircle: View {
         Button(action: action) {
             ZStack {
                 if done {
-                    Circle().fill(Palette.accent)
+                    Circle().fill(look.accent)
                     Image(systemName: "checkmark")
                         .font(.system(size: 9, weight: .heavy))
-                        .foregroundColor(Palette.onAccent)
+                        .foregroundColor(look.onAccent)
                 } else {
-                    Circle().fill(hovering ? Palette.accent.opacity(0.18) : Color.clear)
-                    Circle().strokeBorder(hovering ? Palette.accent : (overdue ? Palette.danger : Palette.faint), lineWidth: 1.5)
+                    Circle().fill(hovering ? look.accent.opacity(0.18) : Color.clear)
+                    Circle().strokeBorder(hovering ? look.accent : (overdue ? look.danger : look.faint), lineWidth: 1.5)
                 }
             }
             .frame(width: 18, height: 18)

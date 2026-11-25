@@ -106,6 +106,7 @@ namespace TodoWidget.UI
             list.EditRequested += EditItem;
             list.ContextRequested += ShowItemMenu;
             list.DoneToggleRequested += () => app.ToggleShowDone();
+            list.ClearDoneRequested += () => app.ClearDone();
 
             // ── 되돌리기 바 ──
             undoBar = new RoundPanel { BackColor = Theme.Back, FillColor = Theme.Surface, Radius = Px(8), Visible = false };

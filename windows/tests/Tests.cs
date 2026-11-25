@@ -191,6 +191,24 @@ static class Tests
         Check(Reminders.NextUp(new[] { g1, g2, g3, g6 }, gNow) == g2, "next up");
         Check(Reminders.NextUp(new[] { g1, g5 }, gNow) == null, "no next up");
 
+        // ── 색 설정 ──
+        {
+            int rgb;
+            Check(ColorHex.TryParse("#2F6BD8", out rgb) && rgb == 0x2F6BD8, "hex parse");
+            Check(ColorHex.TryParse("2f6bd8", out rgb) && rgb == 0x2F6BD8, "hex parse lower/no hash");
+            Check(!ColorHex.TryParse("#12345", out rgb) && !ColorHex.TryParse("blue", out rgb) && !ColorHex.TryParse(null, out rgb), "hex reject");
+            Check(ColorHex.Format(0x2F6BD8) == "#2F6BD8", "hex format");
+            Check(ColorHex.Mix(0x000000, 0xFFFFFF, 0.5) == 0x808080, "mix " + ColorHex.Format(ColorHex.Mix(0x000000, 0xFFFFFF, 0.5)));
+            Check(ColorHex.Luminance(0xFFFFFF) > 0.99 && ColorHex.Luminance(0x000000) < 0.01 && ColorHex.Luminance(0xFFEC85) > 0.5, "luminance");
+
+            var st = new AppSettings();
+            Check(st.AccentColor == "#1E7A57" && st.MarkerColor == "#FFEC85", "color defaults");
+            st.AccentColor = "nope"; st.Theme = "glass"; st.Normalize();
+            Check(st.AccentColor == "#1E7A57" && st.Theme == "glass", "normalize colors, keep glass");
+            st.Theme = "neon"; st.Normalize();
+            Check(st.Theme == "system", "unknown theme => system");
+        }
+
         // ── 저장/불러오기 ──
         var dir = Path.Combine(Path.GetTempPath(), "todowidget-test-" + Guid.NewGuid().ToString("N"));
         try
@@ -203,6 +221,7 @@ static class Tests
             data.Items.AddRange(items);
             data.Settings.X = 100; data.Settings.Y = -20; data.Settings.Width = 320; data.Settings.Height = 480;
             data.Settings.ReminderMinutes = 15;
+            data.Settings.AccentColor = "#7B4FD6"; data.Settings.MarkerColor = "#A9DDFF"; data.Settings.GlassTint = 20;
             storage.Save(data);
             storage.Save(data); // 두 번째 저장은 File.Replace 경로 + .bak 생성
             var json = File.ReadAllText(storage.FilePath);
@@ -215,11 +234,13 @@ static class Tests
             Check(la.Text == "회의" && la.Due == a.Due && la.Notified == a.Notified && la.Created == a.Created, "roundtrip item");
             Check(loaded.Items.First(i => i.Id == e.Id).Done, "roundtrip done");
             Check(loaded.Settings.ReminderMinutes == 15 && loaded.Settings.Y == -20 && loaded.Settings.Width == 320, "roundtrip settings");
+            Check(loaded.Settings.AccentColor == "#7B4FD6" && loaded.Settings.MarkerColor == "#A9DDFF" && loaded.Settings.GlassTint == 20, "roundtrip colors");
 
             // 설정이 빠진 옛 파일 → 기본값
             File.WriteAllText(storage.FilePath, "{\"items\":[{\"id\":\"x\",\"text\":\"옛 항목\"}]}");
             var old = storage.Load();
             Check(old.Items.Count == 1 && old.Settings.ReminderMinutes == 30 && old.Settings.OpacityPercent == 97, "missing settings => defaults");
+            Check(old.Settings.AccentColor == "#1E7A57" && old.Settings.MarkerColor == "#FFEC85", "missing colors => defaults");
 
             // 손상된 파일 → 백업에서 복구 + 손상본 보관
             File.WriteAllText(storage.FilePath, "{ broken");

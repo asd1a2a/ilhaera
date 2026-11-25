@@ -6,6 +6,7 @@ import IlhaeraCore
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var store: Store!
     private var widget: WidgetWindowController!
+    private var settingsWindow: SettingsWindowController!
     private var statusItem: NSStatusItem!
     private let menu = NSMenu()
     private var timer: Timer?
@@ -29,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         store = Store(storage: storage)
         applyTheme()
         widget = WidgetWindowController(store: store, onMenu: { [weak self] in self?.popUpMenu() })
+        settingsWindow = SettingsWindowController(store: store)
         store.onAlerts = { [weak self] alerts in self?.showAlerts(alerts) }
         store.onSettingsChanged = { [weak self] in
             self?.applyTheme()
@@ -37,6 +39,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         setUpStatusItem()
         widget.show()
+        // 자동 화면 확인(CI)용: 설정 창을 바로 연다
+        if CommandLine.arguments.contains("--settings") { settingsWindow.show() }
 
         if !store.settings.autoStartInitialized {
             LoginItem.setEnabled(true)
@@ -63,7 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // ── 알림 ──
 
     private func showAlerts(_ alerts: [ReminderAlert]) {
-        AlertPanels.show(alerts,
+        AlertPanels.show(alerts, store: store,
                          onSnooze: { [weak self] ids in self?.store.snooze(ids, minutes: AlertPanels.snoozeMinutes) },
                          onOpen: { [weak self] in self?.widget.show() })
     }
@@ -128,7 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(submenu("알림 시점", lead))
 
         let theme = NSMenu()
-        for (value, title) in [("system", "시스템 설정 따르기"), ("light", "밝게"), ("dark", "어둡게")] {
+        for (value, title) in [("system", "시스템 설정 따르기"), ("light", "밝게"), ("dark", "어둡게"), ("glass", "리퀴드 글래스")] {
             theme.addItem(item(title, checked: s.theme == value) { [weak self] in
                 self?.store.updateSettings { $0.theme = value }
             })
@@ -138,6 +142,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item("로그인 시 자동 실행", checked: LoginItem.isEnabled) {
             LoginItem.setEnabled(!LoginItem.isEnabled)
         })
+        let settings = item("설정… (색, 유리 투명도)") { [weak self] in self?.settingsWindow.show() }
+        settings.keyEquivalent = ","
+        menu.addItem(settings)
         menu.addItem(.separator())
 
         let clear = item("완료한 일 모두 지우기") { [weak self] in self?.store.clearDone() }

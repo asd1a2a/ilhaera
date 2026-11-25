@@ -29,7 +29,7 @@ struct TodoListView: View {
                 .padding(.bottom, 8)
             }
             // 유리 테마에서는 스크롤 막대 자리가 불투명한 띠로 보여서 숨긴다
-            .scrollIndicators(look.glass ? .hidden : .automatic)
+            .scrollIndicators(look.glass ? .never : .automatic)
             .onChange(of: store.scrollTarget) { target in
                 guard let target else { return }
                 withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(target, anchor: .center) }

@@ -201,11 +201,14 @@ struct WindowBackground: View {
     var body: some View {
         if look.glass {
             ZStack {
-                BlurBehindWindow()
+                // "--no-blur": 자동 화면 확인(CI)에서 흐림 없이 창 투명도만 볼 때
+                if !CommandLine.arguments.contains("--no-blur") {
+                    BlurBehindWindow()
+                }
                 (look.dark ? RGB(hex: 0x16181C).color : Color.white).opacity(look.glassTint)
-                LinearGradient(colors: [Color.white.opacity(look.dark ? 0.10 : 0.38), Color.white.opacity(0)],
-                               startPoint: .top, endPoint: .center)
-                    .blendMode(.plusLighter)
+                // 유리 위쪽 가장자리에 맺히는 반사광
+                LinearGradient(colors: [Color.white.opacity(look.dark ? 0.08 : 0.22), Color.white.opacity(0)],
+                               startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.3))
             }
             .ignoresSafeArea()
         } else {
@@ -236,9 +239,29 @@ struct SurfaceBackground: View {
     }
 }
 
+/// 판을 까는 방식: macOS 26 이상의 유리 테마에서는 시스템 리퀴드 글래스, 그 밖에는 직접 그린 판.
+struct SurfaceModifier: ViewModifier {
+    @Environment(\.look) var look
+    let radius: CGFloat
+    let fill: Color?
+
+    func body(content: Content) -> some View {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *), look.glass {
+            content.glassEffect(fill.map { Glass.regular.tint($0) } ?? Glass.regular,
+                                in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+        } else {
+            content.background(SurfaceBackground(radius: radius, fill: fill))
+        }
+        #else
+        content.background(SurfaceBackground(radius: radius, fill: fill))
+        #endif
+    }
+}
+
 extension View {
     func surface(radius: CGFloat, fill: Color? = nil) -> some View {
-        background(SurfaceBackground(radius: radius, fill: fill))
+        modifier(SurfaceModifier(radius: radius, fill: fill))
     }
 }
 

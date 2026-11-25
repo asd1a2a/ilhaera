@@ -40,7 +40,7 @@ namespace TodoWidget.UI
         List<Row> rows = new List<Row>();
         int contentHeight, scroll;
         int hoverIndex = -1;
-        bool hoverCheck, hoverDelete, hoverThumb;
+        bool hoverCheck, hoverDelete, hoverThumb, hoverClear;
         bool draggingThumb;
         int dragStartY, dragStartScroll;
 
@@ -53,6 +53,9 @@ namespace TodoWidget.UI
         public event Action<TodoItem> EditRequested;
         public event Action<TodoItem, Point> ContextRequested;
         public event Action DoneToggleRequested;
+        public event Action ClearDoneRequested;
+
+        const string ClearDoneText = "완료한 일 모두 지우기";
 
         public TodoListView()
         {
@@ -109,7 +112,13 @@ namespace TodoWidget.UI
                 if (section.Kind == SectionKind.Done)
                 {
                     int th = Px(34);
-                    rows.Add(new Row { Kind = RowKind.DoneToggle, Section = section, Top = y + Px(4), Height = th });
+                    // 줄 오른쪽 끝: "완료한 일 모두 지우기"
+                    int clearW = TextRenderer.MeasureText(ClearDoneText, headerSubFont, new Size(int.MaxValue, int.MaxValue), LineFlags).Width + Px(16);
+                    rows.Add(new Row
+                    {
+                        Kind = RowKind.DoneToggle, Section = section, Top = y + Px(4), Height = th,
+                        Delete = new Rectangle(right - clearW, y + Px(4), clearW, th),
+                    });
                     y += th + Px(4);
                     if (!ShowDone) continue;
                 }
@@ -240,10 +249,16 @@ namespace TodoWidget.UI
         void DrawDoneToggle(Graphics g, Row row, int top, bool hovered)
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            var r = new RectangleF(Px(2), top, Width - ScrollBarWidth - Px(4), row.Height);
-            if (hovered) Theme.FillRound(g, Theme.Hover, r, Px(7));
+            var clear = Offset(row.Delete);
+            bool overClear = hovered && hoverClear;
+            bool overToggle = hovered && !hoverClear;
+            var r = new RectangleF(Px(2), top, clear.Left - Px(6), row.Height);
+            if (overToggle) Theme.FillRound(g, Theme.Hover, r, Px(7));
+            if (overClear) Theme.FillRound(g, Theme.Hover, clear, Px(7));
+            TextRenderer.DrawText(g, ClearDoneText, headerSubFont, clear, overClear ? Theme.Danger : Theme.SubText,
+                LineFlags | TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter);
             string label = (ShowDone ? "완료 숨기기" : "완료한 일 보기") + "  " + row.Section.Items.Count;
-            var color = hovered ? Theme.Text : Theme.SubText;
+            var color = overToggle ? Theme.Text : Theme.SubText;
             int cx = PadX + Px(9), cy = top + row.Height / 2;
             using (var pen = new Pen(color, Math.Max(1.4f, Theme.Scale * 1.5f)) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round })
             {
@@ -380,12 +395,14 @@ namespace TodoWidget.UI
                 onCheck = check.Contains(p);
                 onDelete = Offset(r.Delete).Contains(p);
             }
-            if (idx != hoverIndex || onCheck != hoverCheck || onDelete != hoverDelete || onThumb != hoverThumb)
+            bool onClear = idx >= 0 && !onThumb && rows[idx].Kind == RowKind.DoneToggle && Offset(rows[idx].Delete).Contains(p);
+            if (idx != hoverIndex || onCheck != hoverCheck || onDelete != hoverDelete || onThumb != hoverThumb || onClear != hoverClear)
             {
                 hoverIndex = idx;
                 hoverCheck = onCheck;
                 hoverDelete = onDelete;
                 hoverThumb = onThumb;
+                hoverClear = onClear;
                 bool toggleRow = idx >= 0 && rows[idx].Kind == RowKind.DoneToggle;
                 Cursor = onCheck || onDelete || toggleRow ? Cursors.Hand : Cursors.Default;
                 Invalidate();
@@ -410,7 +427,7 @@ namespace TodoWidget.UI
             base.OnMouseLeave(e);
             if (draggingThumb) return;
             hoverIndex = -1;
-            hoverCheck = hoverDelete = hoverThumb = false;
+            hoverCheck = hoverDelete = hoverThumb = hoverClear = false;
             Invalidate();
         }
 
@@ -431,7 +448,9 @@ namespace TodoWidget.UI
 
             if (row.Kind == RowKind.DoneToggle)
             {
-                if (e.Button == MouseButtons.Left && e.Clicks == 1 && DoneToggleRequested != null) DoneToggleRequested();
+                if (e.Button != MouseButtons.Left || e.Clicks != 1) return;
+                if (hoverClear) { if (ClearDoneRequested != null) ClearDoneRequested(); }
+                else if (DoneToggleRequested != null) DoneToggleRequested();
                 return;
             }
 

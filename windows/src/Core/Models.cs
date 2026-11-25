@@ -142,6 +142,12 @@ namespace TodoWidget.Core
         /// <summary>"system" | "light" | "dark"</summary>
         [DataMember(Name = "theme", Order = 9)] public string Theme { get; set; }
         [DataMember(Name = "showDone", Order = 10)] public bool ShowDone { get; set; }
+        /// <summary>강조 색 (체크·버튼·진행률), "#RRGGBB"</summary>
+        [DataMember(Name = "accentColor", Order = 11)] public string AccentColor { get; set; }
+        /// <summary>형광펜 색 (곧 시작할 일), "#RRGGBB"</summary>
+        [DataMember(Name = "markerColor", Order = 12)] public string MarkerColor { get; set; }
+        /// <summary>Mac 버전의 리퀴드 글래스 투명도. Windows 에서는 쓰지 않고 값만 보존한다.</summary>
+        [DataMember(Name = "glassTint", Order = 13, EmitDefaultValue = false)] public int? GlassTint { get; set; }
 
         public AppSettings() { SetDefaults(); }
 
@@ -153,12 +159,18 @@ namespace TodoWidget.Core
             OpacityPercent = 97;
             ReminderMinutes = 30;
             Theme = "system";
+            AccentColor = ColorHex.DefaultAccent;
+            MarkerColor = ColorHex.DefaultMarker;
         }
 
         public void Normalize()
         {
             if (OpacityPercent < 30 || OpacityPercent > 100) OpacityPercent = 97;
-            if (Theme != "light" && Theme != "dark") Theme = "system";
+            // "glass" 는 Mac 전용 테마: 값은 두고 Windows 에서는 시스템 설정처럼 보여 준다
+            if (Theme != "light" && Theme != "dark" && Theme != "glass") Theme = "system";
+            int rgb;
+            if (!ColorHex.TryParse(AccentColor, out rgb)) AccentColor = ColorHex.DefaultAccent;
+            if (!ColorHex.TryParse(MarkerColor, out rgb)) MarkerColor = ColorHex.DefaultMarker;
             if (ReminderMinutes < 1 || ReminderMinutes > 24 * 60) ReminderMinutes = 30;
         }
     }

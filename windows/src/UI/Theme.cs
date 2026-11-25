@@ -41,6 +41,38 @@ namespace TodoWidget.UI
 
         public static void Apply(bool dark)
         {
+            Apply(dark, Core.ColorHex.DefaultAccent, Core.ColorHex.DefaultMarker);
+        }
+
+        /// <summary>테마와 사용자가 고른 강조 색·형광펜 색으로 색 한 벌을 만든다.</summary>
+        public static void Apply(bool dark, string accentHex, string markerHex)
+        {
+            ApplyBase(dark);
+
+            // 강조 색: 어두운 바탕에서는 조금 밝게
+            int accentBase = Core.ColorHex.ParseOr(accentHex, 0x1E7A57);
+            int accent = accentBase;
+            if (dark) accent = accentBase == 0x1E7A57 ? 0x46C68A : Core.ColorHex.Mix(accentBase, 0xFFFFFF, 0.28);
+            Accent = Rgb(accent);
+            AccentHover = Rgb(Core.ColorHex.Mix(accent, 0xFFFFFF, 0.14));
+            OnAccent = Core.ColorHex.Luminance(accent) > 0.6 ? Rgb(0x0E1A14) : Color.White;
+
+            // 형광펜: 밝은 바탕에서는 그 색 그대로, 어두운 바탕에서는 어둡게 깔고 글자를 그 색으로
+            int markerBase = Core.ColorHex.ParseOr(markerHex, 0xFFEC85);
+            if (dark)
+            {
+                Marker = Rgb(Core.ColorHex.Mix(markerBase, 0x1E2023, 0.72));
+                MarkerText = Rgb(Core.ColorHex.Mix(markerBase, 0xFFFFFF, 0.15));
+            }
+            else
+            {
+                Marker = Rgb(markerBase);
+                MarkerText = Core.ColorHex.Luminance(markerBase) > 0.5 ? Rgb(Core.ColorHex.Mix(markerBase, 0x000000, 0.74)) : Color.White;
+            }
+        }
+
+        static void ApplyBase(bool dark)
+        {
             IsDark = dark;
             if (!dark)
             {

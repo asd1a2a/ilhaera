@@ -48,6 +48,18 @@ function MoveTo($x, $y) {
     [U]::SetCursorPos($x, $y) | Out-Null
     Start-Sleep -Milliseconds 60
 }
+function Pixel($x, $y) {
+    $bmp = New-Object System.Drawing.Bitmap 1, 1
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.CopyFromScreen($x, $y, 0, 0, $bmp.Size)
+    $c = $bmp.GetPixel(0, 0)
+    $g.Dispose(); $bmp.Dispose()
+    "$($c.R),$($c.G),$($c.B)"
+}
+function Wheel($delta) {
+    [U]::mouse_event(0x0800, 0, 0, [uint32]([int]$delta -band 0xFFFFFFFF), [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 400
+}
 function Press { [U]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 120 }
 function Release { [U]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 250 }
 function Click($x, $y) {
@@ -76,13 +88,13 @@ function Layout { Start-Sleep -Milliseconds 700; Read-Json (Join-Path $ci "layou
 function Data { Read-Json $dataFile }
 function DoneCount { @((Data).items | Where-Object { $_.done }).Count }
 
-function Start-App($theme, $extra, $key) {
+function Start-App($theme, $extra, $mode) {
     $seedArgs = @((Join-Path $root "mac\ci\seed.py"), $theme) + $extra
     & python @seedArgs
     if ($LASTEXITCODE -ne 0) { throw "seed failed" }
     Remove-Item (Join-Path $ci "layout.json") -ErrorAction SilentlyContinue
     $env:ILHAERA_CI_DIR = $ci
-    $env:ILHAERA_GLASS_KEY = $key
+    $env:ILHAERA_GLASS_MODE = $mode   # "" = let the app find what works on this machine
     $script:app = Start-Process -FilePath $Exe -PassThru
     for ($i = 0; $i -lt 40 -and !(Test-Path (Join-Path $ci "layout.json")); $i++) { Start-Sleep -Milliseconds 500 }
     if (!(Test-Path (Join-Path $ci "layout.json"))) { Note "!! app did not report its layout (theme=$theme)" }
@@ -99,7 +111,27 @@ function Verdict($ok) { if ($ok) { "OK" } else { "FAIL" } }
 # Click, drag, resize, open the menu and hide, and say whether each worked.
 function Test-Mouse($label) {
     $l = Layout
-    Note "[$label] glass=$($l.glass) widget=$($l.widget -join ',') pane=$($l.pane -join ',')"
+    Note "[$label] glass=$($l.glass) mode=$($l.mode) widget=$($l.widget -join ',') pane=$($l.pane -join ',')"
+
+    # hover a row on its empty part: the row should light up (in the glass theme this goes through the pane)
+    $p0 = Pixel $l.row[0] $l.row[1]
+    MoveTo ($l.row[0] - 5) $l.row[1]
+    MoveTo $l.row[0] $l.row[1]
+    Start-Sleep -Milliseconds 600
+    $p1 = Pixel $l.row[0] $l.row[1]
+    Note "[$label] row hover: pixel $p0 -> $p1  $(Verdict ($p0 -ne $p1))"
+    Shot "$label-hover"
+
+    # wheel over an empty part of the list (a section title row): the list should scroll
+    $y0 = $l.check[1]
+    MoveTo $l.row[0] ($l.row[1] - 30)
+    Start-Sleep -Milliseconds 300
+    Wheel (-120)
+    $y1 = (Layout).check[1]
+    Note "[$label] wheel over list: first row y $y0 -> $y1  $(Verdict ($y1 -lt $y0))"
+    Wheel 120
+    Wheel 120
+    $l = Layout
 
     $before = DoneCount
     Click $l.check[0] $l.check[1]
@@ -115,9 +147,9 @@ function Test-Mouse($label) {
     if ($l.glass) { Note "[$label] glass pane follows: pane=$($l.pane -join ',')  $(Verdict (($l.pane -join ',') -eq ($l.widget -join ',')))" }
     Shot "$label-moved"
 
-    Drag $l.size[0] $l.size[1] 40 30
+    Drag $l.size[0] $l.size[1] 40 0
     $l = Layout; $c = $l.widget
-    Note "[$label] resize by corner: $($b[2])x$($b[3]) -> $($c[2])x$($c[3])  $(Verdict (($c[2] - $b[2]) -eq 40 -and ($c[3] - $b[3]) -eq 30))"
+    Note "[$label] resize by right edge: $($b[2])x$($b[3]) -> $($c[2])x$($c[3])  $(Verdict (($c[2] - $b[2]) -eq 40 -and $c[3] -eq $b[3]))"
     if ($l.glass) { Note "[$label] glass pane follows: pane=$($l.pane -join ',')  $(Verdict (($l.pane -join ',') -eq ($l.widget -join ',')))" }
 
     Click $l.menu[0] $l.menu[1]
@@ -160,14 +192,23 @@ Start-Sleep -Seconds 4
 Shot "backdrop"
 
 # ---- scenes ----
+function GlassShot($name, $tint, $mode) {
+    Scene $name { Start-App "glass" @("glassTint=$tint") $mode; Note "[$name] mode=$((Layout).mode)"; Shot $name }
+}
 Scene "light" { Start-App "light" @() ""; Shot "light"; Test-Mouse "light" }
 Scene "glass" { Start-App "glass" @("glassTint=35") ""; Shot "glass"; Test-Mouse "glass" }
-Scene "glass-symmetric" { Start-App "glass" @("glassTint=35") "symmetric"; Shot "glass-sym"; Test-Mouse "glass-sym" }
-Scene "glass-10" { Start-App "glass" @("glassTint=10") ""; Shot "glass-10" }
-Scene "glass-80" { Start-App "glass" @("glassTint=80") ""; Shot "glass-80" }
+GlassShot "glass-10" 10 ""
+GlassShot "glass-80" 80 ""
+# each way of drawing the glass, forced, to see what this Windows does with it
+GlassShot "mode-acrylic" 35 "acrylic"
+GlassShot "mode-blur" 35 "blur"
+GlassShot "mode-blur-10" 10 "blur"
+GlassShot "mode-blur-80" 80 "blur"
+GlassShot "mode-plain" 35 "plain"
+GlassShot "mode-plain-10" 10 "plain"
 Scene "done" { Start-App "glass" @("glassTint=35", "showDone=true", "accentColor=#1E7A57", "markerColor=#FFEC85") ""; Shot "glass-default-colors" }
 Set-Look 0
-Scene "glass-dark" { Start-App "glass" @("glassTint=35") ""; Shot "glass-dark" }
+Scene "glass-dark" { Start-App "glass" @("glassTint=35") ""; Note "[glass-dark] mode=$((Layout).mode)"; Shot "glass-dark" }
 Scene "dark" { Start-App "dark" @() ""; Shot "dark" }
 Set-Look 1
 

@@ -88,9 +88,9 @@ namespace TodoWidget.UI
 
         /// <summary>
         /// 창 뒤 화면을 흐리게 비추는 유리 바탕을 켠다 (Windows 10 1803 이상).
-        /// rgb = 유리에 입힐 색, alpha = 그 색의 진하기 0~255. simple = 옮기는 동안 쓰는 가벼운 흐림.
+        /// state: 4 = 아크릴(짙은 흐림), 3 = 가벼운 흐림, 0 = 끄기. rgb = 유리에 입힐 색, alpha = 그 색의 진하기 0~255.
         /// </summary>
-        public static bool SetGlass(IntPtr hwnd, int rgb, int alpha, bool simple)
+        public static bool SetGlass(IntPtr hwnd, int state, int rgb, int alpha)
         {
             if (!IsWindows || Build < 17134) return false;
             IntPtr mem = IntPtr.Zero;
@@ -98,7 +98,7 @@ namespace TodoWidget.UI
             {
                 var accent = new AccentPolicy
                 {
-                    State = simple ? 3 : 4,   // 3 = 흐림, 4 = 아크릴
+                    State = state,
                     Flags = 2,                // 색 입히기
                     // 0xAABBGGRR. 아크릴은 진하기가 0 이면 그려지지 않는다.
                     GradientColor = (Math.Max(1, Math.Min(255, alpha)) << 24) | ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF),

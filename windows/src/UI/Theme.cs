@@ -17,8 +17,6 @@ namespace TodoWidget.UI
         public static bool IsDark { get; private set; }
         /// <summary>리퀴드 글래스: 위젯 바탕(Back)이 뚫려서 뒤에 깔린 유리판이 비친다.</summary>
         public static bool IsGlass { get; private set; }
-        /// <summary>확인용: 유리 테마의 뚫는 색을 빨강=파랑인 색으로 (마우스가 유리판으로 빠지는 경로를 시험).</summary>
-        public static bool GlassKeySymmetric { get; set; }
 
         public static Color Back { get; private set; }        // 위젯 바탕
         public static Color Surface { get; private set; }     // 입력칸
@@ -107,14 +105,14 @@ namespace TodoWidget.UI
         {
             if (!dark)
             {
-                Back = Rgb(GlassKeySymmetric ? 0xFAFCFA : 0xFAFBFC);
+                Back = Rgb(0xFAFBFC);
                 Surface = Rgb(0xFFFFFF); Hover = Rgb(0xF1F4F8); Pressed = Rgb(0xE2E7ED); Raised = Rgb(0xE9EEF4);
                 Border = Rgb(0xCDD4DD); Text = Rgb(0x14171C); SubText = Rgb(0x3B424D); Faint = Rgb(0x687080);
                 Warn = Rgb(0x8F5200); Danger = Rgb(0xC62F2F); Saturday = Rgb(0x2459C4);
             }
             else
             {
-                Back = Rgb(GlassKeySymmetric ? 0x1C1E1C : 0x1C1D1F);
+                Back = Rgb(0x1C1D1F);
                 Surface = Rgb(0x2B2E33); Hover = Rgb(0x34383E); Pressed = Rgb(0x41464D); Raised = Rgb(0x454A52);
                 Border = Rgb(0x4D525A); Text = Rgb(0xF4F5F7); SubText = Rgb(0xC9CED6); Faint = Rgb(0x9299A4);
                 Warn = Rgb(0xFFC24D); Danger = Rgb(0xFF7A7A); Saturday = Rgb(0x8AB2FF);

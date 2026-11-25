@@ -351,6 +351,12 @@ namespace TodoWidget.UI
                 return;
             }
             Color border = state == DueState.Overdue ? Theme.Danger : Theme.Faint;
+            if (Theme.IsGlass)
+            {
+                // 유리 위에서는 동그라미 안을 채워야 또렷하고, 가운데를 눌러도 바로 받는다
+                Theme.FillRound(g, Theme.Surface, rf, radius);
+                if (state != DueState.Overdue) border = Theme.SubText;
+            }
             if (hover)
             {
                 Theme.FillRound(g, Color.FromArgb(Theme.IsDark ? 70 : 40, Theme.Accent), rf, radius);

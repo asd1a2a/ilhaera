@@ -212,12 +212,20 @@ namespace TodoWidget.UI
         /// <summary>화면의 그 자리에 있는 가장 안쪽 컨트롤 (없으면 위젯 자신).</summary>
         public Control ControlAt(Point screen)
         {
+            // Control.GetChildAtPoint 는 64비트에서 좌표를 잘못 넘기는 .NET Framework 버그가 있어 직접 찾는다.
             Control c = this;
             for (;;)
             {
-                var child = c.GetChildAtPoint(c.PointToClient(screen), GetChildAtPointSkip.Invisible | GetChildAtPointSkip.Disabled);
-                if (child == null || !child.IsHandleCreated) return c;
-                c = child;
+                Control hit = null;
+                var p = c.PointToClient(screen);
+                foreach (Control child in c.Controls) // 앞에 있는 것부터
+                {
+                    if (!child.Visible || !child.Enabled || !child.IsHandleCreated || !child.Bounds.Contains(p)) continue;
+                    hit = child;
+                    break;
+                }
+                if (hit == null) return c;
+                c = hit;
             }
         }
 
@@ -561,11 +569,14 @@ namespace TodoWidget.UI
             Func<Point, string> xy = p => "[" + p.X + "," + p.Y + "]";
             Func<Control, Point> center = c => c.PointToScreen(new Point(c.Width / 2, c.Height / 2));
             var check = list.FirstCheckOnScreen();
+            var row = check.HasValue ? new Point(list.PointToScreen(new Point(list.Width * 7 / 10, 0)).X, check.Value.Y) : (Point?)null;
             return "{\"widget\":[" + Left + "," + Top + "," + Width + "," + Height + "]" +
                    ",\"glass\":" + (PaneAlive ? "true" : "false") +
                    ",\"pane\":" + (PaneAlive ? "[" + pane.Left + "," + pane.Top + "," + pane.Width + "," + pane.Height + "]" : "null") +
                    ",\"drag\":" + xy(new Point(Left + Width / 2, Top + Px(4))) +
-                   ",\"size\":" + xy(new Point(Right - Px(3), Bottom - Px(3))) +
+                   ",\"size\":" + xy(new Point(Right - Px(3), Top + Height / 2)) +
+                   ",\"row\":" + (row.HasValue ? xy(row.Value) : "null") +
+                   ",\"mode\":\"" + (PaneAlive ? pane.ModeName : "") + "\"" +
                    ",\"check\":" + (check.HasValue ? xy(check.Value) : "null") +
                    ",\"menu\":" + xy(center(header.MenuButton)) +
                    ",\"hide\":" + xy(center(header.HideButton)) +

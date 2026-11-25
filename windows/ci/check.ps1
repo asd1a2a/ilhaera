@@ -191,6 +191,47 @@ $backdrop = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList
 Start-Sleep -Seconds 4
 Shot "backdrop"
 
+# ---- experiment: does the glass survive a move? ----
+function MaxDiff($a, $b) {
+    $x = $a.Split(','); $y = $b.Split(',')
+    $m = 0
+    for ($i = 0; $i -lt 3; $i++) { $d = [math]::Abs([int]$x[$i] - [int]$y[$i]); if ($d -gt $m) { $m = $d } }
+    $m
+}
+function GlassVsOutside($label) {
+    $w = (Layout).widget
+    $in = Pixel ($w[0] + 6) ($w[1] + 200)
+    $out = Pixel ($w[0] - 8) ($w[1] + 200)
+    Note "[$label] glass $in vs outside $out  $(Verdict ((MaxDiff $in $out) -ge 12))"
+}
+function Test-Move($name, $mode, $moveFix) {
+    Scene $name {
+        $env:ILHAERA_GLASS_MOVE = $moveFix
+        Start-App "glass" @("glassTint=35") $mode
+        $l = Layout
+        Note "[$name] mode=$($l.mode)"
+        GlassVsOutside "$name before"
+        Drag $l.drag[0] $l.drag[1] (-120) 60
+        Start-Sleep -Milliseconds 800
+        GlassVsOutside "$name after move"
+        Shot "$name"
+        $l = Layout
+        Drag $l.size[0] $l.size[1] 40 0
+        Start-Sleep -Milliseconds 800
+        GlassVsOutside "$name after resize"
+    }
+    $env:ILHAERA_GLASS_MOVE = ""
+}
+Test-Move "move-default" "" ""
+Test-Move "move-keep" "" "keep"
+Test-Move "move-reapply" "" "reapply"
+Test-Move "move-bounce" "" "bounce"
+Test-Move "move-blur" "blur" ""
+Test-Move "move-plain" "plain" ""
+if ($backdrop -and !$backdrop.HasExited) { Stop-Process -Id $backdrop.Id -Force }
+$script:results | Set-Content (Join-Path $Out "results.txt") -Encoding UTF8
+exit 0
+
 # ---- scenes ----
 function GlassShot($name, $tint, $mode) {
     Scene $name { Start-App "glass" @("glassTint=$tint") $mode; Note "[$name] mode=$((Layout).mode)"; Shot $name }

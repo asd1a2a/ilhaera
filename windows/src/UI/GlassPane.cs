@@ -90,8 +90,21 @@ namespace TodoWidget.UI
         {
             if (moving == value) return;
             moving = value;
-            if (IsHandleCreated && mode == GlassMode.Acrylic && Native.Build < 22000) ApplyGlass();
+            if (!IsHandleCreated || mode != GlassMode.Acrylic || Native.Build >= 22000 || MoveFix == "keep") return;
+            if (!value && MoveFix == "reapply") Native.SetGlass(Handle, 0, 0, 0);
+            if (!value && MoveFix == "bounce")
+            {
+                Hide();
+                ApplyGlass();
+                Show();
+                Native.PlaceBehind(Handle, widget.Handle);
+                return;
+            }
+            ApplyGlass();
         }
+
+        // 시험용: 옮긴 뒤 유리가 사라지는 문제의 원인 가리기
+        static readonly string MoveFix = Environment.GetEnvironmentVariable("ILHAERA_GLASS_MOVE") ?? "";
 
         /// <summary>자동 확인용: 지금 쓰는 방식.</summary>
         public string ModeName { get { return mode + (probed ? "" : "?"); } }
@@ -103,7 +116,7 @@ namespace TodoWidget.UI
             if (mode != GlassMode.Plain)
             {
                 // Windows 10 의 아크릴은 창을 옮길 때 심하게 끊기므로 옮기는 동안만 가벼운 흐림으로 바꿔 둔다.
-                int state = mode == GlassMode.Blur || (moving && Native.Build < 22000) ? 3 : 4;
+                int state = mode == GlassMode.Blur || (moving && Native.Build < 22000 && MoveFix != "keep") ? 3 : 4;
                 if (Native.SetGlass(Handle, state, rgb, (int)Math.Round(Math.Max(3, percent) * 2.55)))
                 {
                     if (BackColor != Color.Black) BackColor = Color.Black;

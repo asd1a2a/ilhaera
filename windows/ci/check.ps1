@@ -34,8 +34,7 @@ function Note($text) { Write-Host $text; $script:results.Add($text) }
 function Shot($name) {
     $bmp = New-Object System.Drawing.Bitmap $screen.Width, $screen.Height
     $g = [System.Drawing.Graphics]::FromImage($bmp)
-    $op = [System.Drawing.CopyPixelOperation]::SourceCopy -bor [System.Drawing.CopyPixelOperation]::CaptureBlt
-    $g.CopyFromScreen($screen.Left, $screen.Top, 0, 0, $bmp.Size, $op)
+    $g.CopyFromScreen($screen.Left, $screen.Top, 0, 0, $bmp.Size)
     $bmp.Save((Join-Path $Out "$name.png"), [System.Drawing.Imaging.ImageFormat]::Png)
     $g.Dispose(); $bmp.Dispose()
     Write-Host "shot $name"

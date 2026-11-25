@@ -162,8 +162,10 @@ function Test-Mouse($label) {
     for ($i = 1; $i -le 5; $i++) { MoveTo ($dx - 12 * $i) ($dy + 6 * $i) }
     Start-Sleep -Milliseconds 600
     if ($l.glass) {
-        # half way, mouse button still down
-        GlassVsOutside "$label while dragging" ($a[0] - 60) ($a[1] + 30)
+        # half way, mouse button still down. Where the widget is depends on the Windows setting
+        # "show window contents while dragging" (off = only an outline moves), so ask the app.
+        $mid = (Layout).widget
+        GlassVsOutside "$label while dragging" $mid[0] $mid[1]
         Shot "$label-dragging"
     }
     for ($i = 6; $i -le 10; $i++) { MoveTo ($dx - 12 * $i) ($dy + 6 * $i) }

@@ -31,6 +31,7 @@ namespace TodoWidget.UI
         ProbeDot probe;
         int probeStep;
         GlassMode mode;
+        int shownState; // 지금 켜져 있는 흐림 (4 아크릴, 3 가벼운 흐림, 0 없음)
         int tint;
         bool moving;
         Control lastTarget;
@@ -74,6 +75,7 @@ namespace TodoWidget.UI
         {
             base.OnHandleCreated(e);
             Native.RoundCorners(Handle);
+            shownState = 0;
             ApplyGlass();
         }
 
@@ -90,21 +92,8 @@ namespace TodoWidget.UI
         {
             if (moving == value) return;
             moving = value;
-            if (!IsHandleCreated || mode != GlassMode.Acrylic || Native.Build >= 22000 || MoveFix == "keep") return;
-            if (!value && MoveFix == "reapply") Native.SetGlass(Handle, 0, 0, 0);
-            if (!value && MoveFix == "bounce")
-            {
-                Hide();
-                ApplyGlass();
-                Show();
-                Native.PlaceBehind(Handle, widget.Handle);
-                return;
-            }
-            ApplyGlass();
+            if (IsHandleCreated && mode == GlassMode.Acrylic && Native.Build < 22000) ApplyGlass();
         }
-
-        // 시험용: 옮긴 뒤 유리가 사라지는 문제의 원인 가리기
-        static readonly string MoveFix = Environment.GetEnvironmentVariable("ILHAERA_GLASS_MOVE") ?? "";
 
         /// <summary>자동 확인용: 지금 쓰는 방식.</summary>
         public string ModeName { get { return mode + (probed ? "" : "?"); } }
@@ -116,9 +105,12 @@ namespace TodoWidget.UI
             if (mode != GlassMode.Plain)
             {
                 // Windows 10 의 아크릴은 창을 옮길 때 심하게 끊기므로 옮기는 동안만 가벼운 흐림으로 바꿔 둔다.
-                int state = mode == GlassMode.Blur || (moving && Native.Build < 22000 && MoveFix != "keep") ? 3 : 4;
+                int state = mode == GlassMode.Blur || (moving && Native.Build < 22000) ? 3 : 4;
+                // 흐림 방식을 곧바로 바꾸면 Windows 10 에서 유리가 사라져 버린다. 한 번 끄고 다시 켠다.
+                if (shownState != 0 && shownState != state) Native.SetGlass(Handle, 0, 0, 0);
                 if (Native.SetGlass(Handle, state, rgb, (int)Math.Round(Math.Max(3, percent) * 2.55)))
                 {
+                    shownState = state;
                     if (BackColor != Color.Black) BackColor = Color.Black;
                     if (Opacity != 1.0) Opacity = 1.0;
                     return;
@@ -127,6 +119,7 @@ namespace TodoWidget.UI
             }
             // 흐림을 쓸 수 없는 PC: 색을 입힌 반투명 창으로 (뒤가 흐려지지는 않는다)
             Native.SetGlass(Handle, 0, 0, 0);
+            shownState = 0;
             BackColor = Color.FromArgb((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
             Opacity = 0.30 + 0.65 * percent / 100.0;
         }

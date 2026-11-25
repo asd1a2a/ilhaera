@@ -108,6 +108,19 @@ function Stop-App {
 
 function Verdict($ok) { if ($ok) { "OK" } else { "FAIL" } }
 
+function MaxDiff($a, $b) {
+    $x = $a.Split(','); $y = $b.Split(',')
+    $m = 0
+    for ($i = 0; $i -lt 3; $i++) { $d = [math]::Abs([int]$x[$i] - [int]$y[$i]); if ($d -gt $m) { $m = $d } }
+    $m
+}
+# The glass must still tint what is behind it: compare a spot on the glass with a spot just outside the widget.
+function GlassVsOutside($label, $x, $y) {
+    $in = Pixel ($x + 6) ($y + 200)
+    $out = Pixel ($x - 8) ($y + 200)
+    Note "[$label] glass $in vs outside $out  $(Verdict ((MaxDiff $in $out) -ge 12))"
+}
+
 # Click, drag, resize, open the menu and hide, and say whether each worked.
 function Test-Mouse($label) {
     $l = Layout
@@ -141,16 +154,34 @@ function Test-Mouse($label) {
     Shot "$label-checked"
 
     $a = (Layout).widget
-    Drag $l.drag[0] $l.drag[1] (-120) 60
+    $dx = $l.drag[0]; $dy = $l.drag[1]
+    MoveTo ($dx - 2) $dy
+    MoveTo $dx $dy
+    Start-Sleep -Milliseconds 300
+    Press
+    for ($i = 1; $i -le 5; $i++) { MoveTo ($dx - 12 * $i) ($dy + 6 * $i) }
+    Start-Sleep -Milliseconds 600
+    if ($l.glass) {
+        # half way, mouse button still down
+        GlassVsOutside "$label while dragging" ($a[0] - 60) ($a[1] + 30)
+        Shot "$label-dragging"
+    }
+    for ($i = 6; $i -le 10; $i++) { MoveTo ($dx - 12 * $i) ($dy + 6 * $i) }
+    Start-Sleep -Milliseconds 300
+    Release
     $l = Layout; $b = $l.widget
     Note "[$label] drag by background: ($($a[0]),$($a[1])) -> ($($b[0]),$($b[1]))  $(Verdict (($b[0] - $a[0]) -eq -120 -and ($b[1] - $a[1]) -eq 60))"
     if ($l.glass) { Note "[$label] glass pane follows: pane=$($l.pane -join ',')  $(Verdict (($l.pane -join ',') -eq ($l.widget -join ',')))" }
+    if ($l.glass) { GlassVsOutside "$label after move" $b[0] $b[1] }
     Shot "$label-moved"
 
     Drag $l.size[0] $l.size[1] 40 0
     $l = Layout; $c = $l.widget
     Note "[$label] resize by right edge: $($b[2])x$($b[3]) -> $($c[2])x$($c[3])  $(Verdict (($c[2] - $b[2]) -eq 40 -and $c[3] -eq $b[3]))"
-    if ($l.glass) { Note "[$label] glass pane follows: pane=$($l.pane -join ',')  $(Verdict (($l.pane -join ',') -eq ($l.widget -join ',')))" }
+    if ($l.glass) {
+        Note "[$label] glass pane follows: pane=$($l.pane -join ',')  $(Verdict (($l.pane -join ',') -eq ($l.widget -join ',')))"
+        GlassVsOutside "$label after resize" $c[0] $c[1]
+    }
 
     Click $l.menu[0] $l.menu[1]
     Start-Sleep -Milliseconds 900
@@ -190,47 +221,6 @@ $backdrop = Start-Process powershell -PassThru -WindowStyle Hidden -ArgumentList
     "-ExecutionPolicy", "Bypass", "-File", (Join-Path $PSScriptRoot "backdrop.ps1"), "-Image", (Join-Path $root "mac\ci\backdrop.png"))
 Start-Sleep -Seconds 4
 Shot "backdrop"
-
-# ---- experiment: does the glass survive a move? ----
-function MaxDiff($a, $b) {
-    $x = $a.Split(','); $y = $b.Split(',')
-    $m = 0
-    for ($i = 0; $i -lt 3; $i++) { $d = [math]::Abs([int]$x[$i] - [int]$y[$i]); if ($d -gt $m) { $m = $d } }
-    $m
-}
-function GlassVsOutside($label) {
-    $w = (Layout).widget
-    $in = Pixel ($w[0] + 6) ($w[1] + 200)
-    $out = Pixel ($w[0] - 8) ($w[1] + 200)
-    Note "[$label] glass $in vs outside $out  $(Verdict ((MaxDiff $in $out) -ge 12))"
-}
-function Test-Move($name, $mode, $moveFix) {
-    Scene $name {
-        $env:ILHAERA_GLASS_MOVE = $moveFix
-        Start-App "glass" @("glassTint=35") $mode
-        $l = Layout
-        Note "[$name] mode=$($l.mode)"
-        GlassVsOutside "$name before"
-        Drag $l.drag[0] $l.drag[1] (-120) 60
-        Start-Sleep -Milliseconds 800
-        GlassVsOutside "$name after move"
-        Shot "$name"
-        $l = Layout
-        Drag $l.size[0] $l.size[1] 40 0
-        Start-Sleep -Milliseconds 800
-        GlassVsOutside "$name after resize"
-    }
-    $env:ILHAERA_GLASS_MOVE = ""
-}
-Test-Move "move-default" "" ""
-Test-Move "move-keep" "" "keep"
-Test-Move "move-reapply" "" "reapply"
-Test-Move "move-bounce" "" "bounce"
-Test-Move "move-blur" "blur" ""
-Test-Move "move-plain" "plain" ""
-if ($backdrop -and !$backdrop.HasExited) { Stop-Process -Id $backdrop.Id -Force }
-$script:results | Set-Content (Join-Path $Out "results.txt") -Encoding UTF8
-exit 0
 
 # ---- scenes ----
 function GlassShot($name, $tint, $mode) {

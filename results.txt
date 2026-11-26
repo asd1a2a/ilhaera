@@ -1,0 +1,47 @@
+﻿os: Microsoft Windows Server 2025 Datacenter build 26100, screen 1024x768
+explorer running: True, dwm running: True
+[light] glass=False mode= rim=False widget=680,24,320,480 pane=
+[light] row hover: pixel 255,255,255 -> 245,246,248  OK
+[light] wheel over list: first row y 254 -> 206  OK
+[light] checkbox click: done 1 -> 2  OK
+[light] drag by background: (680,24) -> (560,84)  OK
+[light] resize by right edge: 320x480 -> 360x480  OK
+[light] hide button: trayHintShown=True  OK
+[light] mouse presses that went through the glass pane: 0
+[glass] glass=True mode=Plain rim=True widget=680,24,320,480 pane=680,24,320,480
+[glass] row hover: pixel 254,230,178 -> 241,244,248  OK
+[glass] wheel over list: first row y 254 -> 206  OK
+[glass] checkbox click: done 1 -> 2  OK
+[glass while dragging] glass 252,206,193 vs outside 248,121,100  OK
+[glass] drag by background: (680,24) -> (560,84)  OK
+[glass] glass pane follows: pane=560,84,320,480  OK
+[glass after move] glass 245,172,203 vs outside 232,74,142  OK
+[glass] resize by right edge: 320x480 -> 360x480  OK
+[glass] glass pane follows: pane=560,84,360,480  OK
+[glass after resize] glass 245,172,203 vs outside 232,74,142  OK
+[glass] hide button: trayHintShown=True  OK
+[glass] mouse presses that went through the glass pane: 2
+[glass-10] mode=Plain
+[glass-80] mode=Plain
+[mode-acrylic] mode=Acrylic?
+[mode-blur] mode=Blur?
+[mode-blur-10] mode=Blur?
+[mode-blur-80] mode=Blur?
+[mode-plain] mode=Plain?
+[mode-plain-10] mode=Plain?
+[clear] mode=Clear
+[clear] glass=True mode=Clear rim=True widget=680,24,320,480 pane=680,24,320,480
+[clear] row hover: pixel 252,203,95 -> 241,244,248  OK
+[clear] wheel over list: first row y 254 -> 206  OK
+[clear] checkbox click: done 1 -> 2  OK
+[clear while dragging] glass 249,151,127 vs outside 248,121,100  OK
+[clear] drag by background: (680,24) -> (560,84)  OK
+[clear] glass pane follows: pane=560,84,320,480  OK
+[clear after move] glass 235,81,146 vs outside 232,74,142  FAIL
+[clear] resize by right edge: 320x480 -> 360x480  OK
+[clear] glass pane follows: pane=560,84,360,480  OK
+[clear after resize] glass 235,81,146 vs outside 232,74,142  FAIL
+[clear] hide button: trayHintShown=True  OK
+[clear] mouse presses that went through the glass pane: 2
+[clear-35] mode=Clear
+[glass-dark] mode=Plain

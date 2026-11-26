@@ -211,18 +211,62 @@ struct WindowBackground: View {
                 if blur {
                     BlurBehindWindow()
                     film.opacity(look.glassTint)
-                    // 유리 위쪽 가장자리에 맺히는 반사광
-                    LinearGradient(colors: [Color.white.opacity(look.dark ? 0.08 : 0.22), Color.white.opacity(0)],
-                                   startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.3))
                 } else {
                     // 완전히 비우면 빈 곳을 눌러도 뒤 창이 눌리므로 눈에 안 보일 만큼만 남긴다
                     film.opacity(max(0.01, look.glassTint))
                 }
+                // 유리 위쪽에 비스듬히 맺히는 반사광
+                LinearGradient(colors: [Color.white.opacity(look.dark ? 0.07 : (blur ? 0.22 : 0.13)), Color.white.opacity(0)],
+                               startPoint: .topLeading, endPoint: UnitPoint(x: 0.55, y: 0.34))
+                GlassRim()
             }
             .ignoresSafeArea()
         } else {
             look.back.ignoresSafeArea()
         }
+    }
+}
+
+/// 창 모서리의 둥글기 (macOS 26 부터 더 둥글다).
+enum WindowShape {
+    static var radius: CGFloat {
+        if #available(macOS 26.0, *) { return 16 }
+        return 10
+    }
+}
+
+/// 유리 가장자리의 빛 굴절. 두꺼운 유리는 가장자리에서 빛이 꺾여 밝은 테가 생기고 색이 갈라진다.
+/// 빛은 왼쪽 위에서 들어와 오른쪽 아래로 빠져나간다. 마우스는 받지 않는다.
+struct GlassRim: View {
+    @Environment(\.look) var look
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: WindowShape.radius, style: .continuous)
+        let k = look.dark ? 0.62 : 1.0 // 어두운 유리는 빛이 덜 돈다
+        func light(_ from: Double, _ mid: Double, _ to: Double, _ color: Color = .white) -> LinearGradient {
+            LinearGradient(stops: [
+                .init(color: color.opacity(from * k), location: 0),
+                .init(color: color.opacity(mid * k), location: 0.42),
+                .init(color: color.opacity(mid * k), location: 0.62),
+                .init(color: color.opacity(to * k), location: 1),
+            ], startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
+        return ZStack {
+            // 두께감: 가장자리로 갈수록 밝아지는 띠 (빛이 꺾여 모이는 곳)
+            shape.strokeBorder(light(0.55, 0.06, 0.34), lineWidth: 12)
+                .blur(radius: 6)
+            // 무지갯빛 번짐: 들어오는 쪽은 푸른빛, 나가는 쪽은 붉은빛
+            shape.inset(by: 2.2)
+                .strokeBorder(light(0.50, 0, 0.10, Color(.sRGB, red: 0.43, green: 0.80, blue: 1, opacity: 1)), lineWidth: 1.2)
+                .blur(radius: 0.6)
+            shape.inset(by: 3.4)
+                .strokeBorder(light(0.09, 0, 0.42, Color(.sRGB, red: 1, green: 0.59, blue: 0.47, opacity: 1)), lineWidth: 1.2)
+                .blur(radius: 0.6)
+            // 맨 바깥의 또렷한 빛 테
+            shape.strokeBorder(light(0.92, 0.13, 0.60), lineWidth: 1.2)
+        }
+        .clipShape(shape)
+        .allowsHitTesting(false)
     }
 }
 

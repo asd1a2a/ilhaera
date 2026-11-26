@@ -149,6 +149,9 @@ namespace TodoWidget.Core
         /// <summary>리퀴드 글래스의 유리 투명도: 0(아주 투명) ~ 100(불투명). 정한 적이 없으면 null.</summary>
         [DataMember(Name = "glassTint", Order = 13, EmitDefaultValue = false)] public int? GlassTint { get; set; }
 
+        /// <summary>리퀴드 글래스에서 뒤 화면을 흐리게 할지. 꺼져 있으면 흐림 없이 그대로 비친다.</summary>
+        [DataMember(Name = "glassBlur", Order = 14)] public bool GlassBlur { get; set; }
+
         public const int DefaultGlassTint = 35;
         public int GlassTintOrDefault { get { return GlassTint ?? DefaultGlassTint; } }
 

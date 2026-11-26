@@ -33,16 +33,18 @@ namespace TodoWidget.UI
         GlassMode mode;
         int shownState; // 지금 켜져 있는 흐림 (4 아크릴, 3 가벼운 흐림, 0 없음)
         int tint;
+        bool blur; // 뒤 화면을 흐리게 할지. 꺼져 있으면 흐림 없이 색만 입힌 투명한 판
         bool moving;
         Control lastTarget;
 
         /// <summary>확인용: 이 창을 거쳐 위젯으로 넘긴 마우스 누름 횟수.</summary>
         public static int ForwardedClicks;
 
-        public GlassPane(WidgetForm widget, bool dark, int tintPercent)
+        public GlassPane(WidgetForm widget, bool dark, int tintPercent, bool blur)
         {
             this.widget = widget;
             this.dark = dark;
+            this.blur = blur;
             tint = tintPercent;
             mode = forced ?? best;
             probeTimer = new Timer { Interval = 350 };
@@ -87,21 +89,41 @@ namespace TodoWidget.UI
             if (IsHandleCreated) ApplyGlass();
         }
 
+        /// <summary>뒤 화면을 흐리게 할지.</summary>
+        public void SetBlur(bool value)
+        {
+            if (value == blur) return;
+            blur = value;
+            if (!IsHandleCreated) return;
+            ApplyGlass();
+            StartProbeIfNeeded();
+        }
+
         /// <summary>위젯을 끌거나 늘리는 동안.</summary>
         public void SetMoving(bool value)
         {
             if (moving == value) return;
             moving = value;
-            if (IsHandleCreated && mode == GlassMode.Acrylic && Native.Build < 22000) ApplyGlass();
+            if (IsHandleCreated && blur && mode == GlassMode.Acrylic && Native.Build < 22000) ApplyGlass();
         }
 
         /// <summary>자동 확인용: 지금 쓰는 방식.</summary>
-        public string ModeName { get { return mode + (probed ? "" : "?"); } }
+        public string ModeName { get { return blur ? mode + (probed ? "" : "?") : "Clear"; } }
 
         void ApplyGlass()
         {
             int percent = Math.Max(0, Math.Min(100, tint));
             int rgb = TintRgb;
+            if (!blur)
+            {
+                // 흐림 없이: 색만 입힌 창을 그만큼만 보이게 한다. 0 이면 뒤 화면이 그대로 비친다.
+                // (아주 조금은 남겨야 뚫린 곳을 누른 마우스를 이 창이 받아 위젯으로 넘길 수 있다)
+                Native.SetGlass(Handle, 0, 0, 0);
+                shownState = 0;
+                BackColor = Color.FromArgb((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
+                Opacity = Math.Max(0.012, percent / 100.0);
+                return;
+            }
             if (mode != GlassMode.Plain)
             {
                 // Windows 10 의 아크릴은 창을 옮길 때 심하게 끊기므로 옮기는 동안만 가벼운 흐림으로 바꿔 둔다.
@@ -144,7 +166,12 @@ namespace TodoWidget.UI
         protected override void OnVisibleChanged(EventArgs e)
         {
             base.OnVisibleChanged(e);
-            if (Visible && !probed && forced == null && probe == null && mode != GlassMode.Plain)
+            StartProbeIfNeeded();
+        }
+
+        void StartProbeIfNeeded()
+        {
+            if (Visible && blur && !probed && forced == null && probe == null && mode != GlassMode.Plain)
             {
                 probeStep = 0;
                 probeTimer.Start();
@@ -153,7 +180,7 @@ namespace TodoWidget.UI
 
         void ProbeTick()
         {
-            if (IsDisposed || !Visible) { EndProbe(); return; }
+            if (IsDisposed || !Visible || !blur) { EndProbe(); return; }
             if (probeStep == 0)
             {
                 // 아크릴부터: 거의 투명한 자홍색을 입힌다. 유리가 되면 뒤 화면이 보이고, 안 되면 자홍색 점이 된다.

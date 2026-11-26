@@ -29,7 +29,8 @@ if show_done:
 settings = {"theme": theme, "reminderMinutes": 30, "autoStartInitialized": True, "opacity": 100, "showDone": show_done}
 if theme == "glass":
     # 색 바꾸기도 함께 확인: 보라 강조 + 하늘색 형광펜, 꽤 투명한 유리
-    settings.update(accentColor="#7B4FD6", markerColor="#A9DDFF", glassTint=20)
+    # (흐린 유리가 기준 화면. 흐림 없는 완전 투명은 glassBlur=false 를 붙여서 본다)
+    settings.update(accentColor="#7B4FD6", markerColor="#A9DDFF", glassTint=20, glassBlur=True)
 
 # 뒤에 붙인 "이름=값" 은 설정을 덮어쓴다
 for pair in sys.argv[2:]:

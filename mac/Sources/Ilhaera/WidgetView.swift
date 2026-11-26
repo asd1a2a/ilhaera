@@ -38,6 +38,7 @@ struct WidgetView: View {
         }
         .padding(EdgeInsets(top: 6, leading: 14, bottom: 12, trailing: 10))
         .frame(minWidth: 300, maxWidth: .infinity, minHeight: 340, maxHeight: .infinity, alignment: .top)
+        .modifier(ClearGlassLegibility())
         .background(WindowBackground())
         .ignoresSafeArea(.container, edges: .top)
         .sheet(item: $editing) { item in

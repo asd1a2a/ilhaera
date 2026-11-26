@@ -239,8 +239,12 @@ GlassShot "mode-blur-10" 10 "blur"
 GlassShot "mode-blur-80" 80 "blur"
 GlassShot "mode-plain" 35 "plain"
 GlassShot "mode-plain-10" 10 "plain"
+# no blur: the desktop shows through as it is (tint 0 = fully clear). The mouse must still work on the empty parts.
+Scene "clear" { Start-App "glass" @("glassTint=0", "glassBlur=false") ""; Note "[clear] mode=$((Layout).mode)"; Shot "clear"; Test-Mouse "clear" }
+Scene "clear-35" { Start-App "glass" @("glassTint=35", "glassBlur=false") ""; Note "[clear-35] mode=$((Layout).mode)"; Shot "clear-35" }
 Scene "done" { Start-App "glass" @("glassTint=35", "showDone=true", "accentColor=#1E7A57", "markerColor=#FFEC85") ""; Shot "glass-default-colors" }
 Set-Look 0
+Scene "clear-dark" { Start-App "glass" @("glassTint=0", "glassBlur=false") ""; Shot "clear-dark" }
 Scene "glass-dark" { Start-App "glass" @("glassTint=35") ""; Note "[glass-dark] mode=$((Layout).mode)"; Shot "glass-dark" }
 Scene "dark" { Start-App "dark" @() ""; Shot "dark" }
 Set-Look 1

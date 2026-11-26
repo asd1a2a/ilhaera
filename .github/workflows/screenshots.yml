@@ -35,7 +35,7 @@ jobs:
           mkdir -p shots
           shoot() {  # shoot <이름> <테마> [앱 인자...]
             local name="$1" theme="$2"; shift 2
-            python3 mac/ci/seed.py "$theme"
+            python3 mac/ci/seed.py "$theme" $SEED
             open "mac/build/일해라.app" --args "$@"
             sleep 10
             screencapture -x "shots/$name.png"
@@ -53,6 +53,8 @@ jobs:
           sleep 5
           shoot glass glass
           shoot glass-noblur glass --no-blur
+          SEED="glassTint=0 glassBlur=false" shoot clear glass
+          SEED="glassTint=35 glassBlur=false" shoot clear-35 glass
           shoot settings glass --settings
           ls -la shots
       # 결과를 ci-output-<OS> 브랜치에 올린다 (artifact 를 받을 수 없는 환경에서도 git 으로 가져갈 수 있게)

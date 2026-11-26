@@ -17,7 +17,7 @@
     <Description>일해라 - 바탕화면 할 일 위젯</Description>
     <Company>TodoWidget</Company>
     <Copyright>TodoWidget</Copyright>
-    <Version>1.4.0</Version>
+    <Version>1.5.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />

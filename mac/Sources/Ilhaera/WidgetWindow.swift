@@ -71,6 +71,9 @@ final class WidgetWindowController: NSObject, NSWindowDelegate {
         let glass = s.theme == "glass"
         window.isOpaque = !glass
         window.backgroundColor = glass ? .clear : Palette.nsBack
+        // 흐림 없는 유리: 창 그림자가 글자 둘레에 번지지 않게 끄고, 비어 보이는 곳도 눌리고 끌리게 한다
+        window.hasShadow = !(glass && !s.glassBlur)
+        window.ignoresMouseEvents = false
         window.invalidateShadow()
     }
 

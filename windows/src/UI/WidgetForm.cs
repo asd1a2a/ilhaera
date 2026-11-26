@@ -36,7 +36,7 @@ namespace TodoWidget.UI
         public WidgetForm(TrayApp app)
         {
             this.app = app;
-            if (Theme.IsGlass) pane = new GlassPane(this, Theme.IsDark, app.Settings.GlassTintOrDefault);
+            if (Theme.IsGlass) pane = new GlassPane(this, Theme.IsDark, app.Settings.GlassTintOrDefault, app.Settings.GlassBlur);
             SuspendLayout();
             AutoScaleMode = AutoScaleMode.None;
             FormBorderStyle = FormBorderStyle.None;
@@ -259,6 +259,7 @@ namespace TodoWidget.UI
             {
                 // 유리판이 투명도를 맡는다. 글자까지 흐려지지 않게 위젯은 불투명하게 둔다.
                 pane.TopMost = s.AlwaysOnTop;
+                pane.SetBlur(s.GlassBlur);
                 pane.SetTint(s.GlassTintOrDefault);
                 TopMost = s.AlwaysOnTop;
                 Opacity = 1.0;

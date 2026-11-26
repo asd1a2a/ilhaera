@@ -63,6 +63,8 @@ struct Look: Equatable {
     var dark: Bool
     /// 리퀴드 글래스 바탕의 불투명한 정도 0~1
     var glassTint: Double
+    /// 리퀴드 글래스에서 뒤 화면을 흐리게 할지 (꺼져 있으면 그대로 비친다)
+    var glassBlur: Bool
 
     var back: Color
     var surface: Color
@@ -111,7 +113,7 @@ struct Look: Equatable {
 
         if glass {
             return Look(
-                glass: true, dark: dark, glassTint: Double(settings.glassTint) / 100,
+                glass: true, dark: dark, glassTint: Double(settings.glassTint) / 100, glassBlur: settings.glassBlur,
                 back: .clear,
                 surface: dark ? Color.white.opacity(0.10) : Color.white.opacity(0.42),
                 hover: dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05),
@@ -128,7 +130,7 @@ struct Look: Equatable {
                 saturday: pick(0x2459C4, 0x8AB2FF))
         }
         return Look(
-            glass: false, dark: dark, glassTint: 1,
+            glass: false, dark: dark, glassTint: 1, glassBlur: false,
             back: pick(0xFFFFFF, 0x1E2023),
             surface: pick(0xF1F3F5, 0x2A2D31),
             hover: pick(0xF5F6F8, 0x26292D),
@@ -195,20 +197,27 @@ struct BlurBehindWindow: NSViewRepresentable {
 }
 
 /// 위젯·알림 창의 바탕. 유리 테마면 흐림 + 색 막(투명도 조절) + 위쪽 반사광, 아니면 단색.
+/// 유리 테마에서 "뒤 화면 흐리게"가 꺼져 있으면 흐림과 반사광 없이 색 막만 깔아서 뒤가 그대로 비친다.
 struct WindowBackground: View {
     @Environment(\.look) var look
+    /// 알림 창처럼 꼭 읽혀야 하는 곳은 설정과 상관없이 흐리게 깐다
+    var alwaysBlur = false
 
     var body: some View {
         if look.glass {
+            let blur = (look.glassBlur || alwaysBlur) && !CommandLine.arguments.contains("--no-blur")
+            let film = look.dark ? RGB(hex: 0x16181C).color : Color.white
             ZStack {
-                // "--no-blur": 자동 화면 확인(CI)에서 흐림 없이 창 투명도만 볼 때
-                if !CommandLine.arguments.contains("--no-blur") {
+                if blur {
                     BlurBehindWindow()
+                    film.opacity(look.glassTint)
+                    // 유리 위쪽 가장자리에 맺히는 반사광
+                    LinearGradient(colors: [Color.white.opacity(look.dark ? 0.08 : 0.22), Color.white.opacity(0)],
+                                   startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.3))
+                } else {
+                    // 완전히 비우면 빈 곳을 눌러도 뒤 창이 눌리므로 눈에 안 보일 만큼만 남긴다
+                    film.opacity(max(0.01, look.glassTint))
                 }
-                (look.dark ? RGB(hex: 0x16181C).color : Color.white).opacity(look.glassTint)
-                // 유리 위쪽 가장자리에 맺히는 반사광
-                LinearGradient(colors: [Color.white.opacity(look.dark ? 0.08 : 0.22), Color.white.opacity(0)],
-                               startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.3))
             }
             .ignoresSafeArea()
         } else {
@@ -262,6 +271,19 @@ struct SurfaceModifier: ViewModifier {
 extension View {
     func surface(radius: CGFloat, fill: Color? = nil) -> some View {
         modifier(SurfaceModifier(radius: radius, fill: fill))
+    }
+}
+
+/// 흐림 없는 유리에서는 글자가 바탕화면 그림 위에 바로 놓인다. 바탕과 같은 쪽 빛(밝게: 흰빛, 어둡게: 그늘)을 둘러 읽히게 한다.
+struct ClearGlassLegibility: ViewModifier {
+    @Environment(\.look) var look
+
+    func body(content: Content) -> some View {
+        if look.glass && !look.glassBlur {
+            content.shadow(color: (look.dark ? Color.black : Color.white).opacity(0.55), radius: 2.5, x: 0, y: 0)
+        } else {
+            content
+        }
     }
 }
 

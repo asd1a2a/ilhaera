@@ -1,11 +1,11 @@
 #!/bin/bash
 # 일해라.app 을 만든다 (macOS, Xcode 명령행 도구 필요).
 #   ./build-app.sh            → build/일해라.app, build/Ilhaera-mac.zip
-#   VERSION=1.4.0 ./build-app.sh
+#   VERSION=1.5.0 ./build-app.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION="${VERSION:-1.4.0}"
+VERSION="${VERSION:-1.5.0}"
 BUILD="${BUILD:-1}"
 APP="build/일해라.app"
 

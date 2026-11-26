@@ -138,6 +138,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var markerColor: String = AppSettings.defaultMarker
     /// 리퀴드 글래스의 불투명한 정도 0(가장 투명)~100
     public var glassTint: Int = AppSettings.defaultGlassTint
+    /// 리퀴드 글래스에서 뒤 화면을 흐리게 할지. 꺼져 있으면 흐림 없이 그대로 비친다.
+    public var glassBlur: Bool = false
 
     public static let defaultAccent = "#1E7A57"
     public static let defaultMarker = "#FFEC85"
@@ -148,7 +150,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case alwaysOnTop, opacity, reminderMinutes, autoStartInitialized, theme, showDone
-        case accentColor, markerColor, glassTint
+        case accentColor, markerColor, glassTint, glassBlur
     }
 
     public init(from decoder: Decoder) throws {
@@ -162,6 +164,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         accentColor = (try? c.decodeIfPresent(String.self, forKey: .accentColor)) ?? AppSettings.defaultAccent
         markerColor = (try? c.decodeIfPresent(String.self, forKey: .markerColor)) ?? AppSettings.defaultMarker
         glassTint = (try? c.decodeIfPresent(Int.self, forKey: .glassTint)) ?? AppSettings.defaultGlassTint
+        glassBlur = (try? c.decodeIfPresent(Bool.self, forKey: .glassBlur)) ?? false
         normalize()
     }
 

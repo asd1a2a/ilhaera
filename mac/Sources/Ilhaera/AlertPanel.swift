@@ -113,7 +113,7 @@ struct AlertView: View {
         }
         .padding(EdgeInsets(top: 16, leading: 18, bottom: 14, trailing: 16))
         .frame(width: 340, alignment: .leading)
-        .background(WindowBackground())
+        .background(WindowBackground(alwaysBlur: true))
         .ignoresSafeArea(.container, edges: .top)
     }
 }

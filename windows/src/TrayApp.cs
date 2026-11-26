@@ -19,8 +19,8 @@ namespace TodoWidget
         static readonly int[] OpacityChoices = { 100, 95, 90, 80, 70, 60 };
         static readonly int[] LeadChoices = { 5, 10, 15, 30, 60, 120 };
         // 유리 투명도: 값이 작을수록 뒤가 많이 비친다
-        static readonly int[] GlassChoices = { 10, 20, 35, 50, 65, 80 };
-        static readonly string[] GlassNames = { "아주 투명", "투명", "보통", "조금 진하게", "진하게", "아주 진하게" };
+        static readonly int[] GlassChoices = { 0, 10, 20, 35, 50, 65, 80 };
+        static readonly string[] GlassNames = { "완전 투명", "아주 투명", "투명", "보통", "조금 진하게", "진하게", "아주 진하게" };
 
         readonly Storage storage;
         readonly NotifyIcon tray;
@@ -31,7 +31,7 @@ namespace TodoWidget
         bool saveErrorShown;
         Action undoAction;
 
-        ToolStripMenuItem miToggle, miTop, miAuto, miClearDone, miOpacity, miGlass, miLead, miTheme, miAccent, miMarker;
+        ToolStripMenuItem miToggle, miTop, miAuto, miClearDone, miOpacity, miGlass, miGlassBlur, miLead, miTheme, miAccent, miMarker;
         string appliedLook;
 
         static readonly string[][] AccentChoices =
@@ -483,6 +483,13 @@ namespace TodoWidget
                 });
                 mi.Tag = value;
             }
+            miGlass.DropDownItems.Add(new ToolStripSeparator());
+            miGlassBlur = AddItem(miGlass.DropDownItems, "뒤 화면 흐리게", () =>
+            {
+                Settings.GlassBlur = !Settings.GlassBlur;
+                Save();
+                if (WidgetAlive) widget.ApplySettings();
+            });
             Menu.Items.Add(miGlass);
 
             miLead = SubMenu("알림 시점");
@@ -547,7 +554,8 @@ namespace TodoWidget
                 miGlass.Visible = glass;
                 miOpacity.Visible = !glass; // 유리 테마에서는 유리 투명도가 대신한다
                 int tint = Nearest(GlassChoices, Settings.GlassTintOrDefault);
-                foreach (ToolStripMenuItem mi in miGlass.DropDownItems) mi.Checked = (int)mi.Tag == tint;
+                foreach (var mi in miGlass.DropDownItems.OfType<ToolStripMenuItem>()) mi.Checked = mi.Tag is int && (int)mi.Tag == tint;
+                miGlassBlur.Checked = Settings.GlassBlur;
                 CheckColor(miAccent, Settings.AccentColor);
                 CheckColor(miMarker, Settings.MarkerColor);
             };

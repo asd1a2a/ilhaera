@@ -30,9 +30,10 @@ struct SettingsView: View {
                     } maximumValueLabel: {
                         Text("불투명").font(.caption)
                     }
-                    Text("유리 뒤로 바탕화면이 얼마나 비칠지 정해요. 글자가 잘 안 보이면 오른쪽으로 옮기세요.")
+                    Text("유리 뒤로 바탕화면이 얼마나 비칠지 정해요. 맨 왼쪽이면 완전히 투명해요. 글자가 잘 안 보이면 오른쪽으로 옮기세요.")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                    Toggle("뒤 화면 흐리게", isOn: setting(\.glassBlur))
                 }
 
                 Slider(value: intSetting(\.opacity), in: 30...100, step: 5) {
@@ -65,6 +66,7 @@ struct SettingsView: View {
                         s.accentColor = AppSettings.defaultAccent
                         s.markerColor = AppSettings.defaultMarker
                         s.glassTint = AppSettings.defaultGlassTint
+                        s.glassBlur = false
                         s.opacity = 97
                     }
                 }

@@ -212,8 +212,6 @@ struct WindowBackground: View {
                     BlurBehindWindow()
                     film.opacity(look.glassTint)
                 } else {
-                    // macOS 26 이상: 시스템의 맑은 유리. 가장자리에서 뒤 화면이 실제로 꺾여 보인다
-                    ClearSystemGlass()
                     // 완전히 비우면 빈 곳을 눌러도 뒤 창이 눌리므로 눈에 안 보일 만큼만 남긴다
                     film.opacity(max(0.01, look.glassTint))
                 }
@@ -234,17 +232,6 @@ enum WindowShape {
     static var radius: CGFloat {
         if #available(macOS 26.0, *) { return 16 }
         return 10
-    }
-}
-
-/// macOS 26 이상에서만: 창 전체에 까는 시스템 리퀴드 글래스(맑은 유리). 그 아래 버전에서는 아무것도 그리지 않는다.
-struct ClearSystemGlass: View {
-    var body: some View {
-        #if compiler(>=6.2)
-        if #available(macOS 26.0, *) {
-            Color.clear.glassEffect(Glass.clear, in: RoundedRectangle(cornerRadius: WindowShape.radius, style: .continuous))
-        }
-        #endif
     }
 }
 

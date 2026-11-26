@@ -124,7 +124,7 @@ function GlassVsOutside($label, $x, $y) {
 # Click, drag, resize, open the menu and hide, and say whether each worked.
 function Test-Mouse($label) {
     $l = Layout
-    Note "[$label] glass=$($l.glass) mode=$($l.mode) widget=$($l.widget -join ',') pane=$($l.pane -join ',')"
+    Note "[$label] glass=$($l.glass) mode=$($l.mode) rim=$($l.rim) widget=$($l.widget -join ',') pane=$($l.pane -join ',')"
 
     # hover a row on its empty part: the row should light up (in the glass theme this goes through the pane)
     $p0 = Pixel $l.row[0] $l.row[1]

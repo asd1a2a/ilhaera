@@ -578,6 +578,7 @@ namespace TodoWidget.UI
                    ",\"size\":" + xy(new Point(Right - Px(3), Top + Height / 2)) +
                    ",\"row\":" + (row.HasValue ? xy(row.Value) : "null") +
                    ",\"mode\":\"" + (PaneAlive ? pane.ModeName : "") + "\"" +
+                   ",\"rim\":" + (PaneAlive && pane.RimShown ? "true" : "false") +
                    ",\"check\":" + (check.HasValue ? xy(check.Value) : "null") +
                    ",\"menu\":" + xy(center(header.MenuButton)) +
                    ",\"hide\":" + xy(center(header.HideButton)) +

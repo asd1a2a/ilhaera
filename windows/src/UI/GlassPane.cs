@@ -28,6 +28,7 @@ namespace TodoWidget.UI
         readonly WidgetForm widget;
         readonly bool dark;
         readonly Timer probeTimer;
+        readonly GlassRim rim; // 유리 가장자리의 빛 (위젯 맨 위에 얹힌다)
         ProbeDot probe;
         int probeStep;
         GlassMode mode;
@@ -47,6 +48,7 @@ namespace TodoWidget.UI
             this.blur = blur;
             tint = tintPercent;
             mode = forced ?? best;
+            rim = new GlassRim(dark);
             probeTimer = new Timer { Interval = 350 };
             probeTimer.Tick += (s, e) => ProbeTick();
             AutoScaleMode = AutoScaleMode.None;
@@ -167,7 +169,46 @@ namespace TodoWidget.UI
         {
             base.OnVisibleChanged(e);
             StartProbeIfNeeded();
+            SyncRim();
         }
+
+        protected override void OnLocationChanged(EventArgs e)
+        {
+            base.OnLocationChanged(e);
+            SyncRim();
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            SyncRim();
+        }
+
+        /// <summary>유리 가장자리의 빛을 이 유리판 자리에 맞추고, 위젯 위에 붙여 둔다.</summary>
+        void SyncRim()
+        {
+            if (rim == null || rim.IsDisposed || !IsHandleCreated) return;
+            try
+            {
+                if (!Visible || widget.IsDisposed || !widget.IsHandleCreated)
+                {
+                    if (rim.Visible) rim.Hide();
+                    return;
+                }
+                rim.Follow(Bounds);
+                if (!rim.Visible)
+                {
+                    rim.TopMost = TopMost;
+                    Native.SetOwner(rim.Handle, widget.Handle); // 소유된 창은 늘 소유자(위젯) 바로 위
+                    rim.Show();
+                    rim.Follow(Bounds);
+                }
+            }
+            catch (Exception) { }
+        }
+
+        /// <summary>자동 확인용: 유리 가장자리가 떠 있는지.</summary>
+        public bool RimShown { get { return rim != null && !rim.IsDisposed && rim.Visible; } }
 
         void StartProbeIfNeeded()
         {
@@ -218,6 +259,7 @@ namespace TodoWidget.UI
             {
                 EndProbe();
                 probeTimer.Dispose();
+                if (rim != null && !rim.IsDisposed) rim.Dispose();
             }
             base.Dispose(disposing);
         }
